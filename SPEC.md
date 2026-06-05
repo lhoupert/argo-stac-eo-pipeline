@@ -13,18 +13,18 @@ FOSS4G Europe 2026 · 30-minute talk + open-source companion project.
 
 2. **The companion repo:** A clone-and-run reference that mirrors the talk as **progressive, independently runnable stages**. It exists so an attendee can go home, `git clone`, `make up`, and *walk the same ladder* on their laptop — no cloud account, no bill.
 
-**Design principle — minimal by default, prod-like as the payoff.** The core stack is the lightest thing that demonstrates each rung (plain Kubernetes manifests, single-replica services, no Helm on the critical path). A separate **prod-like profile** layers in the production-grade components (eoAPI Helm chart, titiler, stac-browser, Grafana) and is shown as the *final* step — "here's where the ladder leads," not a prerequisite for walking it.
+**Design principle — minimal by default, prod-like as the payoff.** The core stack is the lightest thing that demonstrates each rung (plain Kubernetes manifests, single-replica services, no Helm on the critical path). A separate **prod-like profile** layers in the production-grade components (eoAPI Helm chart, titiler, Grafana; stac-browser is already in core) and is shown as the *final* step — "here's where the ladder leads," not a prerequisite for walking it.
 
 **Who it's for:** Intermediate practitioners — comfortable with Python and Docker, *not* assumed to know Argo or STAC. EO/geospatial engineers, data platform engineers, research-software engineers who run scheduled data pipelines.
 
 **What success looks like:**
 - Talk: an audience member can draw the ladder from memory and name what Argo adds at retries → fan-out → logbook → observability.
 - Repo: a fresh clone reaches a working **stage-1** demo **fast** (see the cold/warm budget below) on a laptop, and each later stage diffs cleanly against the previous one so the *delta* is the lesson.
-- The **`ingest`-one-unit function never changes** across stages — only the *orchestration around it* grows, and the shared package gains *new* capabilities (rung 3 adds `logbook.py`). This precise wording matters: a careful viewer who sees a new module appear while you claim "identical code!" feels a seam. The honest, defensible claim — matched to the CI shared-logic invariant — is "the unit-of-work function is untouched; the package grows." (This is the repo's central teaching device.)
+- The **`ingest`-one-unit function never changes** across stages — only the *orchestration around it* grows, and the shared package gains *new* capabilities (**rung 3 grows `logbook.py` with `find_gaps`**). This precise wording matters: a careful viewer who sees code appear while you claim "identical code!" feels a seam. The honest, defensible claim — matched to the CI shared-logic invariant — is "the unit-of-work function is untouched; the package grows." (This is the repo's central teaching device.) **Architecture note (resolved this pass):** the STAC catalog is present as the **logbook from rung 1** — `ingest` registers each item from the start (gated on `STAC_URL`), so the catalog is visibly populated at every rung. `logbook.py` exists from the foundation with `register()`; it *grows* `find_gaps()` at rung 3. The rung-3 reveal is therefore *"the logbook becomes active"* (query it to self-correct), not *"a STAC API appears."*
 
 **Clone-and-run time budget (explicit, measured):**
 - **"Average laptop" is defined**, not hand-waved: a **4-core / 16 GB** machine, stated for both core and prod profiles in the README. The budget below is for the *core* profile.
-- **Stage-1, cold** (first run; images must be pulled): target **< 15 min**. Stage-1 = rung 1 = `stages/01-argo-retries` — the first *cluster-based* rung (rung 0 / `stages/00-cron` needs no cluster). It depends only on Argo + the ingester image + MinIO — the STAC API is **not** on its critical path.
+- **Stage-1, cold** (first run; images must be pulled): target **< 15 min**. Stage-1 = rung 1 = `stages/01-argo-retries` — the first *cluster-based* rung (rung 0 / `stages/00-cron` needs no cluster). It depends on Argo + the ingester image + MinIO **+ the bare STAC logbook (pgSTAC) + stac-browser** — the catalog is on the critical path from rung 1 (resolved this pass; bare `stac-fastapi-pgstac` installs in seconds, so the budget holds — CI re-measures it).
 - **Stage-1, warm** (images cached from a prior run): target **< 5 min**.
 - **CI time ≠ laptop time.** CI's kind smoke test records elapsed time, but a GitHub runner is not "an average laptop." The README states the **runner specs** next to the laptop target and adds at least one **real-laptop anecdote**. A **Windows/WSL2** note sits alongside the Apple-Silicon one — FOSS4G has many Windows/QGIS users, not just macOS.
 
@@ -36,18 +36,18 @@ FOSS4G Europe 2026 · 30-minute talk + open-source companion project.
 
 | Rung | State | What Argo buys you |
 |---|---|---|
-| 0 | Plain cron + Python script | (baseline — you are the only one watching) |
-| 1 | Argo CronWorkflow | Retries, web UI showing the failed step, full logs — *for free*, script unchanged |
-| 2 | Fan-out backfill | Parallelism (`withItems`/`withParam`); days that took a week run in minutes |
-| 3 | STAC as logbook | Idempotency + **gap detection**; the catalog knows what's ingested and what's missing |
-| 4 | Observability | Daily reports + metrics; systemic error periods surface for humans |
-| 5 (optional) | Prod-like deployment | The same ladder on real components: eoAPI, titiler, stac-browser, Grafana |
+| 0 | Plain cron + Python script | (baseline — you are the only one watching; no catalog, no UI) |
+| 1 | Argo CronWorkflow | Retries, web UI showing the failed step, full logs — *for free*, script unchanged; items appear in the **STAC logbook** (browsable in stac-browser) |
+| 2 | Fan-out backfill | Parallelism (`withItems`/`withParam`); days that took a week run in minutes; the catalog fills in bulk |
+| 3 | STAC logbook becomes **active** | Idempotency + **gap detection** (`find_gaps`); the catalog stops being a passive record and starts *telling you what to ingest next* |
+| 4 | Observability | Daily reports (incl. a gap heatmap) + metrics; systemic error periods surface for humans |
+| 5 (optional) | Prod-like deployment | The same ladder on real components: eoAPI, titiler, Grafana (stac-browser is already in core) |
 
 **Two levels of self-correction (the closing payoff):**
 - *Item level:* failed items are re-ingested automatically via STAC gap detection.
 - *System level:* error-rate anomalies surface in daily reports for human intervention.
 
-> **Note on "across missions":** the talk's hook frames EO ingestion as multi-mission. The local seed honours this with **two small synthetic collections** (two pseudo-missions), so gap detection and fan-out are shown operating *per collection*, not against a single stream.
+> **Note on "across missions":** the talk's hook frames EO ingestion as multi-mission. The local seed honours this with **two small synthetic collections** (two pseudo-missions) over **two visually-separable regions at real coordinates**, so gap detection and fan-out are shown operating *per collection* on the stac-browser map, not against a single stream. The synthetic data is generated in-repo behind a clean seam (`src/eo_ingest/synthetic/`); its **themed fictional world is specified by a separate companion spec** (see "Synthetic world" below) — this spec commits only to the interface contract so the ladder isn't blocked.
 
 ### Time budget (≈26½ min content + ~3½ min live Q&A)
 
@@ -105,14 +105,15 @@ The **core (default)** column is what `make up` installs — minimal, plain-mani
 |---|---|---|---|
 | Orchestrator | **Argo Workflows** minimal quick-start manifests (pinned, ~v3.6.x) | same | Kubernetes-native; the UI/retries are the point. UI must be exposed in the minimal install. |
 | Local Kubernetes | **kind** (vanilla upstream K8s) | same | Vendor-neutral, prod-fidelity; single cluster for *everything* |
-| STAC API + catalog | **bare `stac-fastapi-pgstac` + pgSTAC** (single Postgres pod, plain manifests) | **eoAPI** via `eoapi-k8s` Helm chart | Core keeps it light & fast; prod profile shows the real, batteries-included stack |
+| STAC API + catalog (**logbook, on the path from rung 1**) | **bare `stac-fastapi-pgstac` + pgSTAC** (single Postgres pod, plain manifests) | **eoAPI** via `eoapi-k8s` Helm chart | Core keeps it light & fast; prod profile shows the real, batteries-included stack |
 | Tiles / coverage map | — (skipped in core) | **titiler-pgstac** | Coverage map is a *nice-to-have* at rung 4; lives in the prod profile |
-| STAC browser | — (skipped in core) | **stac-browser** | Prod profile only |
+| STAC browser | **stac-browser** (lightweight static app, pointed at the core API) | same (eoAPI-bundled) | **Moved to core** (resolved this pass): makes the catalog *visually* browsable from rung 1 — the demo's main visual surface |
 | Object store (S3) | **MinIO** single-container Deployment (plain manifest) | MinIO (Helm) | S3-compatible sink, fully local in both |
-| Reporting / metrics | **daily-report Job querying the Argo Workflows API** (workflow statuses); **workflow archive enabled** on the existing Postgres for history | + **Prometheus scrape + Grafana** for the `/metrics` error-rate dashboard | See "Rung-4 data source" below — core needs no Prometheus; the error-rate *dashboard* is prod-only |
+| Reporting / metrics | **daily-report Job querying the Argo Workflows API** (workflow statuses) — renders a **gap heatmap** (✅/⬜ calendar grid); **workflow archive enabled** on the existing Postgres for history | + **Prometheus scrape + Grafana** for the `/metrics` error-rate dashboard | See "Rung-4 data source" below — core needs no Prometheus; the error-rate *dashboard* is prod-only |
 | Ingestion language | **Python 3.12** | same | The business logic that stays *unchanged* across stages |
-| STAC client | **pystac-client**, **pystac** | same | Query source + write to logbook |
+| STAC client | **pystac-client**, **pystac** | same | Resolve source items + register to logbook |
 | S3 client | **boto3** | same | Talks to MinIO via in-cluster DNS; one boring, well-understood client |
+| CLI / visuals | **rich** (pretty CLI: progress, tables, colored logs) + **pillow** (deterministic PNG thumbnails) | same | Make terminal clips and the catalog *look* good; both light + standard (resolved this pass) |
 | Packaging | **uv** | same | Fast, reproducible; `uv.lock` committed |
 | Lint/format | **ruff** | same | Lint + format in one tool |
 | Tests | **pytest** (+ **moto** for S3, responses/respx for STAC) | same | Unit fast & offline; integration against kind |
@@ -129,11 +130,11 @@ The **core (default)** column is what `make up` installs — minimal, plain-mani
 ### Progressive stages (each independently runnable)
 
 ```
-stages/00-cron/          Plain host crontab + `python -m eo_ingest.ingest`. NO Kubernetes. The honestly-fragile baseline.
-stages/01-argo-retries/  Same ingest function, Argo CronWorkflow. First rung that needs kind. Retries, UI, logs.
-stages/02-fanout/        Argo fan-out (withItems/withParam) for parallel backfill.
-stages/03-stac-logbook/  Write items to STAC; query gaps; ingest only missing. Idempotent.
-stages/04-observability/ Daily report + Argo API; 2-level self-correction. Coverage map = prod profile.
+stages/00-cron/          Plain host crontab + `python -m eo_ingest.ingest`. NO Kubernetes, no catalog (STAC_URL unset). The honestly-fragile baseline.
+stages/01-argo-retries/  Same ingest function, Argo CronWorkflow. First rung that needs kind. Retries, UI, logs; items register to the STAC logbook (browsable).
+stages/02-fanout/        Argo fan-out (withItems/withParam) for parallel backfill; catalog fills in bulk.
+stages/03-stac-logbook/  Logbook becomes ACTIVE: query gaps (find_gaps); ingest only missing. Idempotent, self-correcting.
+stages/04-observability/ Daily report + Argo API + gap heatmap; 2-level self-correction. Coverage map = prod profile.
 ```
 
 **Folder number == rung number.** `stages/0N` is rung `N` (00 = rung 0 … 04 = rung 4); rung 5 (prod-like) is a deployment profile, not a folder. This keeps the talk's ladder and the repo's folders in lockstep — no off-by-one to translate.
@@ -142,7 +143,27 @@ stages/04-observability/ Daily report + Argo API; 2-level self-correction. Cover
 
 Each stage folder contains its own orchestration (stage 00: a documented `crontab` line + run script; stages 01+: `workflows/*.yaml`), a `README.md` ("what's new vs. previous rung"), and any stage-specific config. The **`src/eo_ingest`** package is shared and stable — stages add orchestration, not new business logic.
 
-**The prod-like deployment is a profile, not a code stage (resolved).** It is the same workflows pointed at the eoAPI/titiler/stac-browser/Grafana stack via `make up PROFILE=prod`, plus a short appendix README — a deployment swap ("where the ladder leads"), not a sixth rung. This keeps the staged folders as the orchestration-delta rungs of the ladder.
+**The prod-like deployment is a profile, not a code stage (resolved).** It is the same workflows pointed at the eoAPI/titiler/Grafana stack via `make up PROFILE=prod`, plus a short appendix README — a deployment swap ("where the ladder leads"), not a sixth rung. This keeps the staged folders as the orchestration-delta rungs of the ladder. (stac-browser is in *core*.)
+
+### Synthetic world (its design lives in a separate companion spec)
+
+The deterministic ladder runs on **synthetic** data so it is offline, reproducible, and free of
+real-data licensing entanglements. That data is generated **in-repo, behind a clean seam**
+(`src/eo_ingest/synthetic/`) — *not* a separate companion project, to protect the offline
+clone-and-run promise; the seam keeps it extractable later if it earns independent life.
+
+**Decision (resolved this pass):** the synthetic data is a **themed fictional world** (memorable,
+unmistakably-not-real-Copernicus, and a deliberate setup for the recap's *fake → real* Sentinel-2
+contrast). The world's design — names, geography, look, an **original / IP-safe** identity (no
+Tolkien/trademarked names) placed at **real-world coordinates** so the stac-browser OSM basemap
+renders it — is **specified by the companion spec [`SYNTHETIC_WORLD_SPEC.md`](./SYNTHETIC_WORLD_SPEC.md)**:
+the *Meridian Observation Initiative*, two missions over **Finnish Lapland** and the **Wadden Sea**. A true
+fantasy *basemap* would need a custom tile server (heavy) and stays out of core.
+
+This spec commits only to the **interface contract** so the ladder is never blocked on the world
+design: for a `(collection, day)`, the synthetic backend yields a *deterministic* STAC item with a
+**polygon geometry at real coordinates**, a `data` asset, and a `thumbnail` asset. Any world
+satisfying that contract drops in; a neutral placeholder world is used until the world spec lands.
 
 ### Project structure
 
@@ -163,11 +184,14 @@ Each stage folder contains its own orchestration (stage 00: a documented `cronta
 │
 ├── src/eo_ingest/              # SHARED, STABLE business logic — ONE copy, no Argo import
 │   ├── __init__.py
-│   ├── stac_source.py          # query a STAC API for items in a date/bbox window
-│   ├── logbook.py              # read/write the STAC catalog; gap detection
-│   ├── download.py             # fetch assets -> MinIO/S3 (idempotent, checksummed)
-│   ├── ingest.py               # orchestrate one unit of work (one day / one item)
-│   └── config.py               # env-driven settings (endpoints, creds, collection)
+│   ├── stac_source.py          # resolve items for a window; backends: synthetic | earthsearch (SOURCE_TYPE)
+│   ├── synthetic/              # in-repo synthetic-data generator behind a clean seam (extractable later)
+│   │                           #   themed fictional world = SEPARATE companion spec; here: interface contract only
+│   ├── logbook.py              # register() (from rung 1) + find_gaps() (grows at rung 3)
+│   ├── download.py             # fetch/generate assets -> MinIO/S3 (idempotent, checksummed) + PNG thumbnail
+│   ├── ingest.py               # FROZEN unit of work: resolve -> download -> S3 -> register (gated on STAC_URL)
+│   ├── report.py               # rung-4 daily report (Argo API) + gap heatmap
+│   └── config.py               # env-driven settings (STAC_URL, S3, collection, SOURCE_TYPE, knobs)
 │
 ├── stages/                     # folder NN == rung NN (00–04); rung 5 is the prod profile, not a folder
 │   ├── 00-cron/                # host crontab + run script + README (NO K8s) — the rung-0 baseline
@@ -178,17 +202,17 @@ Each stage folder contains its own orchestration (stage 00: a documented `cronta
 │
 ├── deploy/                     # the single-cluster local stack
 │   ├── kind-cluster.yaml
-│   ├── core/                   # DEFAULT: plain manifests — Argo (minimal), bare stac-fastapi-pgstac+pgSTAC, MinIO
+│   ├── core/                   # DEFAULT: plain manifests — Argo (minimal), bare stac-fastapi-pgstac+pgSTAC, stac-browser, MinIO
 │   │   ├── argo/
-│   │   ├── stac/               # stac-fastapi-pgstac Deployment + pgSTAC Postgres + Service
+│   │   ├── stac/               # stac-fastapi-pgstac Deployment + pgSTAC Postgres + Service + stac-browser
 │   │   └── minio/              # MinIO Deployment + Service + bucket bootstrap
-│   └── prod/                   # PROFILE=prod: eoapi-k8s Helm values, titiler, stac-browser, optional Grafana
+│   └── prod/                   # PROFILE=prod: eoapi-k8s Helm values, titiler, optional Grafana
 │       ├── eoapi/
 │       ├── minio/
 │       └── grafana/            # optional
 │
 ├── scripts/
-│   ├── seed_stac.py            # seed TWO deterministic local collections WITH intentional gaps
+│   ├── seed_stac.py            # seed TWO deterministic collections (two regions) into the logbook WITH intentional gaps
 │   └── make_screencast_data.py # reproducible state for recording clips
 │
 ├── examples/
@@ -213,7 +237,7 @@ Each stage folder contains its own orchestration (stage 00: a documented `cronta
 ```bash
 # Local stack lifecycle
 make up                 # create kind cluster + install the CORE stack (Argo minimal, bare STAC, MinIO); bootstrap buckets
-make up PROFILE=prod    # same cluster, but install the prod-like stack (eoAPI Helm, titiler, stac-browser, Grafana)
+make up PROFILE=prod    # same cluster, but install the prod-like stack (eoAPI Helm, titiler, Grafana; stac-browser already in core)
 make seed               # seed local STAC with TWO deterministic collections (with gaps)
 make demo STAGE=01      # submit the CronWorkflow/Workflow for a given stage (01 = rung 1, Argo retries)
 make ui                 # port-forward the Argo UI (https://localhost:2746)
@@ -302,11 +326,11 @@ Tests are organised by **boundary**, and the boundary determines who may change 
 
 The "fan-out is faster than sequential" claim is demonstrated **against the local seed with a configurable injected per-item latency** (`INGEST_SLEEP ≈ 2s/item`, over a ~30-item window, fan-out parallelism cap ≈ 10 — see the resolved tuning below) that simulates real network/IO cost. Because the latency is IO-wait (sleeping pods yield CPU), the win shows even on a 4-core laptop. This keeps the before/after **reproducible and deterministic** while staying polite (no hammering a public API). The numbers are recorded in the stage-02 README and re-derived in CI. The real Earth Search example shows *genuine* latency but is **not** the benchmark — it is variable and rate-limited by design.
 
-### Stage 5 scope — core vs. nice-to-have
+### Rung 4 scope — core vs. nice-to-have
 
 Rung 4 is the most feature-dense and least-rehearsed slot, so its scope is tiered to degrade gracefully:
 - **Core (must ship, runs in the default stack):** daily report (stdout + markdown artifact) and the gap-closing demonstration (gaps detected → re-ingested → report shows them closing). This is enough to land the two-level self-correction message.
-- **Nice-to-have (prod profile; shown only if time/laptop allows):** the **error-rate dashboard** (Prometheus scraping Argo's `/metrics` → Grafana), titiler-pgstac coverage map, stac-browser.
+- **Nice-to-have (prod profile; shown only if time/laptop allows):** the **error-rate dashboard** (Prometheus scraping Argo's `/metrics` → Grafana), titiler-pgstac coverage map. (stac-browser is in core.)
 
 #### Rung-4 data source (resolved — was the one open architectural ambiguity)
 
@@ -360,7 +384,7 @@ The repo asks potentially thousands of people to `kubectl apply` pinned manifest
 - Commit secrets/credentials or real API tokens (use K8s Secrets; provide `.env.example`).
 - Hardcode a real S3 bucket or require a cloud account to run stages 1–5.
 - Break the "each stage runs on its own" property.
-- Make any stage 1–4 depend on the prod-only components (eoAPI Helm, titiler, stac-browser, Grafana).
+- Make any stage 1–4 depend on the prod-only components (eoAPI Helm, titiler, Grafana). *(stac-browser is a core viewer; no stage's correctness may depend on it.)*
 - Remove, skip, `xfail`, or otherwise weaken tests without explicit approval — **especially** the acceptance/contract layer (Success Criteria + cold/warm budget). A failing acceptance test means the code or the budget is wrong, not the test.
 
 ---
@@ -380,7 +404,7 @@ Things the abstract doesn't yet name that strengthen both the talk and the repo:
 9. **Reproducible screencast state.** A script that puts the cluster into a known state (with the right gaps, two collections) so clips are re-recordable and match the repo exactly.
 10. **Teardown + footprint note.** `make down` and an honest "this needs ~X GB RAM / Docker resources" line in the README — separately for core vs. `PROFILE=prod`. Nothing kills adoption like a laptop melting silently.
 11. **One image, many stages.** Building a single ingester image reused by every stage reinforces "the code didn't change" and keeps the repo small.
-12. **Minimal core, prod-like as the destination.** Bare manifests on the critical path keep clone-and-run fast and durable; the eoAPI/titiler/stac-browser/Grafana stack is the *payoff* shown via `PROFILE=prod`, not a barrier to entry. This both protects the time budget and gives the talk a satisfying "and here's where it leads" close.
+12. **Minimal core, prod-like as the destination.** Bare manifests on the critical path keep clone-and-run fast and durable; the eoAPI/titiler/Grafana stack is the *payoff* shown via `PROFILE=prod`, not a barrier to entry. This both protects the time budget and gives the talk a satisfying "and here's where it leads" close.
 13. **Multi-arch / Apple Silicon.** A large share of the audience is on arm64. Every pinned image must be multi-arch; treat an arch gap as a release blocker.
 
 ---
@@ -393,9 +417,12 @@ Things the abstract doesn't yet name that strengthen both the talk and the repo:
 - [ ] Each stage runs independently and its README names the delta from the prior rung.
 - [ ] **One** `src/eo_ingest` and **one** ingester image: a CI check proves no stage vendors, patches, or shadows the business logic — orchestration changes, logic doesn't.
 - [ ] Gap detection + idempotent re-ingest proven by unit tests; re-running a stage ingests nothing new.
+- [ ] **STAC logbook on the path from rung 1:** `ingest` registers items from rung 1 (gated on `STAC_URL`); the catalog is populated at every cluster rung and **browsable in stac-browser (core)**. `ingest.py` is byte-frozen; `logbook.py` grows `find_gaps` at rung 3 (proven by the shared-logic invariant + git).
+- [ ] **Synthetic data behind the `src/eo_ingest/synthetic/` seam**, conforming to the interface contract (`(collection, day)` → deterministic item w/ real-coord polygon + `data` + `thumbnail`); the themed world is supplied by the separate companion spec.
+- [ ] **Visual surfaces work:** stac-browser shows tile footprints on a map with thumbnail previews; the rung-4 report renders a gap heatmap; clips use `rich`-formatted terminal output.
 - [ ] Fan-out backfill demonstrably faster than sequential against the local seed with injected `INGEST_SLEEP` (a documented, reproducible before/after).
-- [ ] Seed produces **two** collections with intentional gaps; gap detection operates per collection.
-- [ ] Stage 5 **core** produces a daily report (stdout + markdown) sourced from the **Argo Workflows API** (no Prometheus) and demonstrates gaps closing; the error-rate dashboard / coverage map work under `PROFILE=prod`.
+- [ ] Seed produces **two** collections (two visually-separable regions) with intentional gaps; gap detection operates per collection.
+- [ ] Rung 4 (stage 04) **core** produces a daily report (stdout + markdown) sourced from the **Argo Workflows API** (no Prometheus) and demonstrates gaps closing; the error-rate dashboard / coverage map work under `PROFILE=prod`.
 - [ ] **Rung 0 (`stages/00-cron/`) runs with no Kubernetes** — a host crontab invoking `python -m eo_ingest.ingest`; kind is first required at stage 01. (Corollary: rung 0 runs in any Codespace, including the free tier.)
 - [ ] **Folder number == rung number** across `stages/00`–`stages/04`; the talk's ladder and the repo folders agree with no off-by-one.
 - [ ] A **`.devcontainer`** brings up the full toolchain (uv/kubectl/kind/argo + docker-in-docker), works via local "reopen in container", and is built in CI; the README documents the **optional Codespaces** path with honest machine-size guidance.
@@ -437,6 +464,28 @@ Things the abstract doesn't yet name that strengthen both the talk and the repo:
 - **`obstore` alternative dropped** — `boto3` only; one boring, well-understood S3 client, no unrequested optionality. (P3.)
 - **Daily-report sink stays a plain `report()` function**, not a plugin interface — a documented seam instead of premature abstraction; build the machinery only when a second sink exists. (P3.)
 
+**Resolved (architecture + visual pass, 2026-06-05 — see `tasks/plan.md` AD-1…AD-4):**
+- **STAC logbook is on the path from rung 1 (was: STAC at rung 3, off stage-1 path).** `ingest`
+  registers each item from rung 1 (gated on `STAC_URL`), so the catalog is populated and browsable
+  at every rung. `logbook.py` exists from the foundation with `register()` and **grows `find_gaps`
+  at rung 3**. The rung-3 reveal becomes *"the logbook becomes active"* (query → self-correct), a
+  stronger beat than *"a STAC API appears."* Cost: pgSTAC on the stage-1 critical path — small with
+  bare manifests; CI re-measures the budget (decision gate if it slips).
+- **`ingest.py` is byte-frozen from rung 1**, registration call included + config-gated; rung 0
+  leaves `STAC_URL` unset (no catalog) — code frozen, config varies. Enforced by the shared-logic
+  invariant.
+- **stac-browser moved into the *core* profile** — the catalog's visual surface, browsable from
+  rung 1 (was prod-only).
+- **Synthetic data = themed fictional world, in-repo behind the `src/eo_ingest/synthetic/` seam;
+  its world design is a separate companion spec** (interface contract fixed here). Source is the
+  synthetic generator (or Earth Search via `SOURCE_TYPE`); the one local STAC API is the logbook.
+- **Visual-appeal additions:** real-coordinate polygon footprints + deterministic PNG thumbnails
+  (catalog renders as a map of tiles with previews), two visually-separable regions, a **gap
+  heatmap** in the rung-4 report, one reusable color-blind-safe **ladder SVG** ("you are here").
+- **New deps (light, standard):** **`rich`** (pretty CLI for clips), **`pillow`** (thumbnails).
+
 ---
 
-*This spec is a living document. Update it when scope or decisions change, before implementing. Phase 2 (Plan) and Phase 3 (Tasks) follow once you approve.*
+*This spec is a living document. Update it when scope or decisions change, before implementing.
+Phase 2 (Plan) lives in `tasks/plan.md` + `tasks/todo.md`. The **synthetic-world companion
+spec** (themed fictional world) is now written: [`SYNTHETIC_WORLD_SPEC.md`](./SYNTHETIC_WORLD_SPEC.md).*
