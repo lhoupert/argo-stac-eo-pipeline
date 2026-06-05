@@ -85,14 +85,14 @@ The world bible *as data* — one code path for both missions.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · ★ = checkpoint.
 
-- [ ] **SW1** — `world.py` Mission dataclass + 2-mission registry + `iter_missions()`/lookup · `test_synthetic_world.py`
-- [ ] ★ **CP-SW-A** — registry invariants green
-- [ ] **SW2** — `seed()` + `footprint()` deterministic polygon · `test_synthetic_geometry.py`
-- [ ] **SW3** — `render_assets()` byte-stable `data`+`thumbnail` PNGs (cross-arch) · `test_synthetic_raster.py`
-- [ ] ★ **CP-SW-B** — determinism proven (pinned hashes, no float path)
+- [x] **SW1** — `world.py` Mission dataclass + 2-mission registry + `iter_missions()`/lookup · `test_synthetic_world.py`
+- [x] ★ **CP-SW-A** — registry invariants green
+- [x] **SW2** — `seed()` + `footprint()` deterministic polygon · `test_synthetic_geometry.py`
+- [x] **SW3** — `render_assets()` byte-stable `data`+`thumbnail` PNGs (cross-arch) · `test_synthetic_raster.py`
+- [x] ★ **CP-SW-B** — determinism proven (pinned hashes, no float path)
 - [x] **SW4** — `build_item()` contract-valid STAC item · `test_synthetic_item.py`
-- [ ] **SW5** — `__init__` public API + `preview` CLI · `test_synthetic_api.py`
-- [ ] ★ **CP-SW-C** — API stable, ≥85% coverage, lint+unit green; ready for T4/T5/T17
+- [x] **SW5** — `__init__` public API + `preview` CLI · `test_synthetic_api.py`
+- [x] ★ **CP-SW-C** — API stable, ≥85% coverage (99%), lint+unit green; ready for T4/T5/T17
 
 ### Definition of done (every SW task)
 - [ ] Failing test written first (RED), minimal code to pass (GREEN).
