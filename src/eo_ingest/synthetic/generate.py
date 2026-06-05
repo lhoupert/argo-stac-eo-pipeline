@@ -19,11 +19,15 @@ from .world import Mission, get_mission
 # Polygons are inset from their grid cell so adjacent footprints read as discrete tiles.
 _INSET_FRACTION = 0.08
 
-# Raster sizing. The coarse field is block-replicated up to _SIZE with integer arithmetic only
-# (no float resize) so PNG bytes are identical across architectures — see SYNTHETIC_WORLD_SPEC.md.
+# Raster sizing. The field is smooth value noise warped into the mission's texture, computed with
+# integer arithmetic only (no float anywhere) so PNG bytes are identical across architectures —
+# see SYNTHETIC_WORLD_SPEC.md. Lattice cells must divide _SIZE.
 _SIZE = 256
-_COARSE = 32
-_BLOCK = _SIZE // _COARSE
+_COARSE_CELL = 64  # broad shapes
+_FINE_CELL = 16  # detail octave
+_WARP_CELL = 64  # low-frequency displacement that makes bands flow organically
+_RIBBON_PERIOD = 72  # diagonal band spacing (must be even)
+_CHANNEL_PERIOD = 56  # horizontal band spacing (must be even)
 
 
 def seed(collection: str, day: date) -> int:
@@ -126,16 +130,67 @@ def _build_lut(palette: tuple[str, str, str, str]) -> list[tuple[int, int, int]]
     return lut
 
 
-def _noise_field(seed_value: int) -> list[int]:
-    """A coarse seeded grid block-replicated to a flat _SIZE×_SIZE list of 0..255 values."""
-    rng = random.Random(seed_value)
-    coarse = [rng.randint(0, 255) for _ in range(_COARSE * _COARSE)]
+def _smooth_weight(f: int, span: int) -> int:
+    """Integer smoothstep: eases a 0..span ramp into an S-curve, returning 0..span."""
+    return (3 * f * f * span - 2 * f * f * f) // (span * span)
+
+
+def _value_octave(rng: random.Random, cell: int) -> list[int]:
+    """Smooth value noise: a seeded lattice bilinearly interpolated with integer smoothstep.
+
+    Unlike white noise, neighbouring pixels are correlated, so the field reads as coherent
+    blobs (clouds/terrain) rather than static.
+    """
+    g = _SIZE // cell + 1
+    lattice = [[rng.randint(0, 255) for _ in range(g)] for _ in range(g)]
     field = [0] * (_SIZE * _SIZE)
+    cell2 = cell * cell
     for y in range(_SIZE):
-        row_base = (y // _BLOCK) * _COARSE
+        cy, fy = divmod(y, cell)
+        wy = _smooth_weight(fy, cell)
+        row = lattice[cy]
+        row_next = lattice[cy + 1]
         out_base = y * _SIZE
         for x in range(_SIZE):
-            field[out_base + x] = coarse[row_base + x // _BLOCK]
+            cx, fx = divmod(x, cell)
+            wx = _smooth_weight(fx, cell)
+            top = row[cx] * (cell - wx) + row[cx + 1] * wx
+            bot = row_next[cx] * (cell - wx) + row_next[cx + 1] * wx
+            field[out_base + x] = (top * (cell - wy) + bot * wy) // cell2
+    return field
+
+
+def _triangle(t: int, period: int) -> int:
+    """A 0..255 triangle wave of the given (even) period; total over any integer ``t``."""
+    p = t % period
+    half = period // 2
+    return p * 255 // half if p <= half else (period - p) * 255 // half
+
+
+def _themed_field(mission: Mission, seed_value: int) -> list[int]:
+    """A flat _SIZE×_SIZE field: smooth base noise warped into the mission's directional texture.
+
+    Two octaves of value noise give an organic base; a third low-frequency octave displaces a
+    band wave so the structure flows. ``ribbons`` run diagonally (``x+y``), ``channels`` run
+    horizontally (``y``). Integer-only throughout to stay byte-stable across architectures.
+    """
+    rng = random.Random(seed_value)
+    coarse = _value_octave(rng, _COARSE_CELL)
+    fine = _value_octave(rng, _FINE_CELL)
+    warp = _value_octave(rng, _WARP_CELL)
+
+    diagonal = mission.texture == "ribbons"
+    period = _RIBBON_PERIOD if diagonal else _CHANNEL_PERIOD
+
+    field = [0] * (_SIZE * _SIZE)
+    for y in range(_SIZE):
+        out_base = y * _SIZE
+        for x in range(_SIZE):
+            i = out_base + x
+            base = (3 * coarse[i] + fine[i]) // 4
+            displaced = (x + y if diagonal else y) + (warp[i] - 128) // 2
+            band = _triangle(displaced, period)
+            field[i] = (3 * band + 2 * base) // 5  # 60% directional structure, 40% texture
     return field
 
 
@@ -151,7 +206,7 @@ def render_assets(collection: str, day: date) -> tuple[bytes, bytes]:
     Pure and byte-stable: same ``(collection, day)`` → identical bytes on any architecture.
     """
     mission = get_mission(collection)
-    field = _noise_field(seed(collection, day))
+    field = _themed_field(mission, seed(collection, day))
 
     data_img = Image.new("L", (_SIZE, _SIZE))
     data_img.putdata(field)

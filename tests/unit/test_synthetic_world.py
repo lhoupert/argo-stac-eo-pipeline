@@ -27,6 +27,17 @@ def test_each_palette_has_four_stops() -> None:
         assert len(m.palette) == 4
 
 
+def test_each_mission_declares_a_known_texture() -> None:
+    # The texture drives the directional structure in the raster (ribbons vs channels).
+    for m in iter_missions():
+        assert m.texture in {"ribbons", "channels"}
+
+
+def test_textures_are_distinct_per_mission() -> None:
+    textures = [m.texture for m in iter_missions()]
+    assert len(set(textures)) == len(textures)
+
+
 def test_region_bboxes_are_valid() -> None:
     for m in iter_missions():
         lon_min, lat_min, lon_max, lat_max = m.region_bbox

@@ -40,6 +40,29 @@ def test_two_collections_same_day_differ() -> None:
     assert av[1] != tg[1]  # thumbnail differs
 
 
+def _anisotropy(data_png: bytes) -> tuple[float, float]:
+    """Mean abs neighbour difference along x (h) and along y (v) of the grayscale field."""
+    img = _open(data_png)
+    px = img.tobytes()  # one byte per pixel for mode "L"
+    w, _ = img.size
+    h_diff = sum(abs(px[i + 1] - px[i]) for i in range(len(px)) if (i + 1) % w)
+    v_diff = sum(abs(px[i + w] - px[i]) for i in range(len(px) - w))
+    n = len(px)
+    return h_diff / n, v_diff / n
+
+
+def test_channels_texture_is_horizontally_banded() -> None:
+    # Tidal-Glass uses "channels": crossing bands vertically must vary more than along a row.
+    h, v = _anisotropy(render_assets("synthetic-tidal-glass", date(2026, 3, 14))[0])
+    assert v > 1.3 * h
+
+
+def test_ribbons_texture_is_not_axis_banded() -> None:
+    # Aurora-Veil uses diagonal "ribbons": no strong horizontal/vertical asymmetry.
+    h, v = _anisotropy(render_assets("synthetic-aurora-veil", date(2026, 3, 14))[0])
+    assert abs(v - h) / max(v, h) < 0.3
+
+
 def test_render_assets_does_no_file_io(monkeypatch) -> None:
     def _no_open(*args, **kwargs):
         raise AssertionError("render_assets must not touch the filesystem")
@@ -54,12 +77,12 @@ def test_render_assets_does_no_file_io(monkeypatch) -> None:
 # amd64 too. Do not re-bless without understanding why the bytes moved.
 _GOLDEN = {
     "synthetic-aurora-veil": (
-        "eaa429c029b5973dcf4056198db3642f9a96f9f49eab212d08535763e4b48d22",
-        "56cea346a478d8a3ad1ae4d1218cc567ab897220fb94cb1c11820bb89ad62281",
+        "809f55d8d6f3e65fac8077f4341825e4c06090c0ba2bffd1723497675e35b0e8",
+        "2429b22c3347d8f8f7b0f50174c9673788dda61f0d8fc319496af628427af8ef",
     ),
     "synthetic-tidal-glass": (
-        "5d7144bf85a36fff430166720b6f9c63f17081ccc394fde9f3c43731e13a7174",
-        "a6d0307ede65cfae6af9db3906b34a76854bc16c9fe1fa78e387e4fc16b0a66d",
+        "5d671bf75cb7a60bb7c040d00e1407d36f7806c749bbe8bf95bd3c3110fe0066",
+        "ba02f529ce6ad3b5dc15ac267c81ecc52940af62f70dd1b03eaabad01835c97d",
     ),
 }
 
