@@ -1,0 +1,60 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# ---- uv / virtualenvs ----
+.venv/
+venv/
+env/
+# uv.lock is committed (reproducibility) — do NOT ignore it
+
+# ---- Testing / coverage ----
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+
+# ---- Environment / secrets ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+kubeconfig
+*.kubeconfig
+
+# ---- Kubernetes / Helm ----
+charts/*.tgz
+*.tgz
+
+# ---- Screencasts / generated media (regenerable artifacts) ----
+*.tmp.gif
+*.tmp.mp4
+/tmp/
+scratch/
+
+# ---- Slides build output (Marp HTML/PDF rendered in CI) ----
+docs/slides/*.html
+docs/slides/*.pdf
+
+# ---- OS / editor cruft ----
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
