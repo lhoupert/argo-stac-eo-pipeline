@@ -30,7 +30,7 @@ The seam (AD-1) that lets one image serve every rung.
 - **Verify:** `pytest tests/unit/test_config.py` (TDD); covers `STAC_URL` set vs unset.
 - **Deps:** T1 · **Files:** `src/eo_ingest/config.py`, `tests/unit/test_config.py`.
 
-### [ ] T4 — `stac_source.py` (resolve items for a window) — **S**
+### [x] T4 — `stac_source.py` (resolve items for a window) — **S**
 Two config backends (AD-4): `synthetic` (deterministic generator behind a seam, ladder default) + `earthsearch` (real). Thin branch, **not** a plugin registry.
 - **Interface contract (stable):** `(collection, day)` → deterministic STAC item with a **real-coord polygon geometry** + `data` asset + `thumbnail` asset. **The themed world (names/geography/look) is specified by `SYNTHETIC_WORLD_SPEC.md`** (the *Meridian Observation Initiative* — Finnish Lapland + Wadden Sea); build and test against the interface, not the theme.
 - **Acceptance:** synthetic mode returns deterministic items matching the contract (valid geometry, both assets); earthsearch mode queries the real API; **bounded** query; empty window → `[]`. Test against the **interface**, not the theme.
