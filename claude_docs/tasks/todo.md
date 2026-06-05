@@ -62,7 +62,7 @@ Resolve → download → S3 → `register` (**gated on `STAC_URL`**). **Byte-sta
 
 ## Phase 1 — Rung 0 (NO Kubernetes) + the one image
 
-### [ ] T8 — Ingester Dockerfile (multi-arch, digest-pinned) — **S**
+### [x] T8 — Ingester Dockerfile (multi-arch, digest-pinned) — **S**
 - **Acceptance:** `docker build` succeeds; `docker run eo-ingest:dev python -m eo_ingest.ingest` runs; buildable amd64 **and** arm64; base pinned by `sha256`.
 - **Verify:** `docker buildx build` (both platforms) · `docker run … --help`.
 - **Deps:** T7 · **Files:** `Dockerfile`, `.dockerignore`.
