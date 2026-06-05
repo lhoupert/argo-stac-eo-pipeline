@@ -42,7 +42,7 @@ Two config backends (AD-4): `synthetic` (deterministic generator behind a seam, 
 - **Verify:** `pytest tests/unit/test_download.py` with `moto`; thumbnail is byte-deterministic; includes corrupt/partial adversarial cases.
 - **Deps:** T3 · **Files:** `src/eo_ingest/download.py`, `tests/unit/test_download.py`.
 
-### [ ] T6 — `logbook.py` — `register()` — **S/M**
+### [x] T6 — `logbook.py` — `register()` — **S/M**
 Born in the foundation (AD-2); `find_gaps` is added later at T18.
 - **Acceptance:** idempotent upsert of a STAC item into the catalog (stac-fastapi transactions); item includes `data` + **`thumbnail` asset roles** so stac-browser shows a preview; re-register → no duplicate.
 - **Verify:** `pytest tests/unit/test_logbook_register.py` with `respx`-mocked stac-fastapi.
