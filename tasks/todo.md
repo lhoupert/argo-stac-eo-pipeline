@@ -37,7 +37,7 @@ Two config backends (AD-4): `synthetic` (deterministic generator behind a seam, 
 - **Verify:** `pytest tests/unit/test_stac_source.py` — synthetic determinism + contract shape + `respx`-mocked earthsearch.
 - **Deps:** T3 · **Files:** `src/eo_ingest/stac_source.py`, `src/eo_ingest/synthetic/`, `tests/unit/test_stac_source.py`.
 
-### [ ] T5 — `download.py` (assets → S3, idempotent + checksummed) — **M**
+### [x] T5 — `download.py` (assets → S3, idempotent + checksummed) — **M**
 - **Acceptance:** writes asset to bucket via boto3; synthetic mode also writes a tiny deterministic **PNG `thumbnail`** (`pillow`, mission/date encoded as color) so items render previews in stac-browser; **re-run is a no-op**; **truncated/checksum-mismatch → re-fetched, never silently accepted**.
 - **Verify:** `pytest tests/unit/test_download.py` with `moto`; thumbnail is byte-deterministic; includes corrupt/partial adversarial cases.
 - **Deps:** T3 · **Files:** `src/eo_ingest/download.py`, `tests/unit/test_download.py`.
