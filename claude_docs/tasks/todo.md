@@ -91,6 +91,7 @@ On the rung-1 path now (AD-4). The browser is what makes the demo *visual*.
 - **Acceptance:** bare `stac-fastapi-pgstac` + pgSTAC Postgres + Service reachable in-cluster (`http://stac-api`); pgSTAC migrated; **stac-browser** Deployment+Service pointed at the API; digest-pinned plain manifests.
 - **Verify:** `curl http://stac-api/collections` → 200 · port-forward stac-browser → collections render in the UI.
 - **Deps:** T10 · **Files:** `deploy/core/stac/*.yaml`, `deploy/core/stac/browser.yaml`.
+- **★ FU-1 (follow-up, tracked 2026-06-05):** `radiantearth/stac-browser` is **amd64-only** (no arm64 manifest, all tags incl. v4). Decision: *accept host emulation* on arm64 for now (works on Apple Silicon via Docker Desktop; native on amd64 CI). SPEC classifies this as a multi-arch release-blocker, so before release **build/vendor a multi-arch stac-browser image** and pin our own digest (fold into T23 multi-arch CI). The STAC API itself is multi-arch.
 
 ### [ ] T12 — Argo Workflows minimal install (core) — **M**
 - **Acceptance:** Argo UI reachable via port-forward; hello workflow completes; workflow SA RBAC **least-privilege** (not cluster-admin); auth mode documented.
