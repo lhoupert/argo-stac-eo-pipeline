@@ -90,7 +90,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · ★ = checkpoint.
 - [ ] **SW2** — `seed()` + `footprint()` deterministic polygon · `test_synthetic_geometry.py`
 - [ ] **SW3** — `render_assets()` byte-stable `data`+`thumbnail` PNGs (cross-arch) · `test_synthetic_raster.py`
 - [ ] ★ **CP-SW-B** — determinism proven (pinned hashes, no float path)
-- [ ] **SW4** — `build_item()` contract-valid STAC item · `test_synthetic_item.py`
+- [x] **SW4** — `build_item()` contract-valid STAC item · `test_synthetic_item.py`
 - [ ] **SW5** — `__init__` public API + `preview` CLI · `test_synthetic_api.py`
 - [ ] ★ **CP-SW-C** — API stable, ≥85% coverage, lint+unit green; ready for T4/T5/T17
 

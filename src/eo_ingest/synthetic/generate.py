@@ -56,6 +56,57 @@ def footprint(mission: Mission, day: date) -> dict:
     return {"type": "Polygon", "coordinates": [ring]}
 
 
+def build_item(
+    collection: str,
+    day: date,
+    *,
+    data_href: str,
+    thumbnail_href: str,
+) -> dict:
+    """A contract-valid STAC item dict for ``(collection, day)``.
+
+    The caller owns I/O: it uploads the assets and passes their final hrefs in. This stays a
+    pure function so seeding and screencasts reproduce byte-for-byte — note there is no
+    ``created`` stamp. Geometry comes from :func:`footprint`; ``bbox`` is derived from its ring.
+    """
+    mission = get_mission(collection)
+    geometry = footprint(mission, day)
+    ring = geometry["coordinates"][0]
+    lons = [pt[0] for pt in ring]
+    lats = [pt[1] for pt in ring]
+    bbox = [min(lons), min(lats), max(lons), max(lats)]
+
+    return {
+        "type": "Feature",
+        "stac_version": "1.0.0",
+        "stac_extensions": [],
+        "id": f"MOI-{mission.code}_{day:%Y%m%d}",
+        "collection": mission.collection_id,
+        "geometry": geometry,
+        "bbox": bbox,
+        "properties": {
+            "datetime": f"{day.isoformat()}T10:30:00Z",
+            "mission": mission.collection_id,
+            "platform": mission.platform,
+            "instruments": [mission.instrument],
+            "gsd": 20,
+        },
+        "links": [],
+        "assets": {
+            "data": {
+                "href": data_href,
+                "type": "image/png",
+                "roles": ["data"],
+            },
+            "thumbnail": {
+                "href": thumbnail_href,
+                "type": "image/png",
+                "roles": ["thumbnail"],
+            },
+        },
+    }
+
+
 def _hex_to_rgb(value: str) -> tuple[int, int, int]:
     h = value.lstrip("#")
     return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
