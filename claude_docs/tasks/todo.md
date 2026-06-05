@@ -67,14 +67,15 @@ Resolve → download → S3 → `register` (**gated on `STAC_URL`**). **Byte-sta
 - **Verify:** `docker buildx build` (both platforms) · `docker run … --help`.
 - **Deps:** T7 · **Files:** `Dockerfile`, `.dockerignore`.
 
-### [ ] T9 — `stages/00-cron/` (the fragile baseline + walking skeleton) — **S**
+### [x] T9 — `stages/00-cron/` (the fragile baseline + walking skeleton) — **S**
 `STAC_URL` unset → asset → S3 only; sink = local MinIO via plain `docker run`; no kind/kubectl (AD-3).
 - **Acceptance:** `crontab` line + `run.sh` execute `python -m eo_ingest.ingest` with **no cluster, no catalog**; README explains "nowhere to look at 3am" + the 0→1 delta (laptop crontab → Argo *and you gain a logbook*).
 - **Verify:** run `run.sh` on host → asset in local MinIO; confirm `kubectl`/`kind` never invoked.
 - **Deps:** T8 · **Files:** `stages/00-cron/{crontab,run.sh,README.md}`.
 
 > ### ★ Checkpoint B
-> - [ ] Rung 0 runs end-to-end with **zero Kubernetes** (free-tier-Codespace compatible).
+> - [x] Rung 0 runs end-to-end with **zero Kubernetes** (free-tier-Codespace compatible).
+> - Verified 2026-06-05: `stages/00-cron/run.sh` builds the image, starts local MinIO, runs the ingester (`STAC_URL` unset → `registered=disabled`); both assets land in MinIO; no `kubectl`/`kind` invoked. Left for human review per the ★ gate.
 
 ---
 
