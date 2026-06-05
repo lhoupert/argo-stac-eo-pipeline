@@ -19,7 +19,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · ★ = human-review chec
 - **Verify:** `uv sync` · `uv run ruff check .` clean · `uv run pytest` collects 0 tests OK.
 - **Deps:** None · **Files:** `pyproject.toml`, `uv.lock`, `src/eo_ingest/__init__.py`, `.env.example`, `README.md`.
 
-### [ ] T2 — Minimal CI (lint + unit) — **S**
+### [x] T2 — Minimal CI (lint + unit) — **S**
 - **Acceptance:** `.github/workflows/ci.yml` runs `ruff check` + `pytest tests/unit` on push/PR.
 - **Verify:** push a branch → Actions green.
 - **Deps:** T1 · **Files:** `.github/workflows/ci.yml`.
