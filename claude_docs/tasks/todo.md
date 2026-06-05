@@ -81,7 +81,7 @@ Resolve → download → S3 → `register` (**gated on `STAC_URL`**). **Byte-sta
 
 ## Phase 2 — Local cluster + Rung 1 (Argo retries + the logbook appears)
 
-### [ ] T10 — kind + MinIO (core) — **M**
+### [x] T10 — kind + MinIO (core) — **M**
 - **Acceptance:** `kind create` + apply → MinIO reachable in-cluster (`http://minio:9000`); bucket bootstrapped; digest-pinned.
 - **Verify:** `kubectl get pods` ready · boto/mc smoke from a pod.
 - **Deps:** T1 · **Files:** `deploy/kind-cluster.yaml`, `deploy/core/minio/*.yaml`.
