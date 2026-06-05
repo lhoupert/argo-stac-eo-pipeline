@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import math
 import random
 from datetime import date
 
@@ -19,15 +20,15 @@ from .world import Mission, get_mission
 # Polygons are inset from their grid cell so adjacent footprints read as discrete tiles.
 _INSET_FRACTION = 0.08
 
-# Raster sizing. The field is smooth value noise warped into the mission's texture, computed with
+# Raster sizing. The field is smooth value noise shaped into the mission's texture, computed with
 # integer arithmetic only (no float anywhere) so PNG bytes are identical across architectures —
 # see SYNTHETIC_WORLD_SPEC.md. Lattice cells must divide _SIZE.
 _SIZE = 256
 _COARSE_CELL = 64  # broad shapes
 _FINE_CELL = 16  # detail octave
-_WARP_CELL = 64  # low-frequency displacement that makes bands flow organically
-_RIBBON_PERIOD = 72  # diagonal band spacing (must be even)
+_WARP_CELL = 64  # low-frequency displacement that makes channels flow organically
 _CHANNEL_PERIOD = 56  # horizontal band spacing (must be even)
+_CELL_GRID = 5  # Worley feature points per axis (5x5 jittered grid)
 
 
 def seed(collection: str, day: date) -> int:
@@ -167,31 +168,57 @@ def _triangle(t: int, period: int) -> int:
     return p * 255 // half if p <= half else (period - p) * 255 // half
 
 
-def _themed_field(mission: Mission, seed_value: int) -> list[int]:
-    """A flat _SIZE×_SIZE field: smooth base noise warped into the mission's directional texture.
+def _cellular_field(rng: random.Random, base: list[int]) -> list[int]:
+    """Worley (cellular) noise: distance to the nearest of a jittered grid of feature points.
 
-    Two octaves of value noise give an organic base; a third low-frequency octave displaces a
-    band wave so the structure flows. ``ribbons`` run diagonally (``x+y``), ``channels`` run
-    horizontally (``y``). Integer-only throughout to stay byte-stable across architectures.
+    Centres come out dark and rims bright, giving irregular rounded oval blobs — auroral
+    coronae. Distances use ``math.isqrt`` (exact integer) so bytes stay stable across arches.
     """
-    rng = random.Random(seed_value)
-    coarse = _value_octave(rng, _COARSE_CELL)
-    fine = _value_octave(rng, _FINE_CELL)
+    g = _CELL_GRID
+    span = _SIZE // g
+    points = [
+        (gx * _SIZE // g + rng.randint(0, span - 1), gy * _SIZE // g + rng.randint(0, span - 1))
+        for gy in range(g)
+        for gx in range(g)
+    ]
+    field = [0] * (_SIZE * _SIZE)
+    for y in range(_SIZE):
+        out_base = y * _SIZE
+        for x in range(_SIZE):
+            nearest = min((x - px) ** 2 + (y - py) ** 2 for px, py in points)
+            blob = min(255, math.isqrt(nearest) * 255 // span)
+            field[out_base + x] = (3 * blob + 2 * base[out_base + x]) // 5
+    return field
+
+
+def _channel_field(rng: random.Random, base: list[int]) -> list[int]:
+    """Horizontal bands (``y``) displaced by a low-frequency octave, flowing as tidal channels."""
     warp = _value_octave(rng, _WARP_CELL)
-
-    diagonal = mission.texture == "ribbons"
-    period = _RIBBON_PERIOD if diagonal else _CHANNEL_PERIOD
-
     field = [0] * (_SIZE * _SIZE)
     for y in range(_SIZE):
         out_base = y * _SIZE
         for x in range(_SIZE):
             i = out_base + x
-            base = (3 * coarse[i] + fine[i]) // 4
-            displaced = (x + y if diagonal else y) + (warp[i] - 128) // 2
-            band = _triangle(displaced, period)
-            field[i] = (3 * band + 2 * base) // 5  # 60% directional structure, 40% texture
+            band = _triangle(y + (warp[i] - 128) // 2, _CHANNEL_PERIOD)
+            field[i] = (3 * band + 2 * base[i]) // 5  # 60% structure, 40% base texture
     return field
+
+
+def _themed_field(mission: Mission, seed_value: int) -> list[int]:
+    """A flat _SIZE×_SIZE field: smooth base noise shaped into the mission's texture.
+
+    Two octaves of value noise give an organic base, then the mission's ``texture`` imposes
+    structure: ``cells`` (Worley blobs) or ``channels`` (horizontal bands). Integer-only
+    throughout to stay byte-stable across architectures.
+    """
+    rng = random.Random(seed_value)
+    coarse = _value_octave(rng, _COARSE_CELL)
+    fine = _value_octave(rng, _FINE_CELL)
+    base = [(3 * coarse[i] + fine[i]) // 4 for i in range(_SIZE * _SIZE)]
+
+    if mission.texture == "cells":
+        return _cellular_field(rng, base)
+    return _channel_field(rng, base)
 
 
 def _png_bytes(img: Image.Image) -> bytes:

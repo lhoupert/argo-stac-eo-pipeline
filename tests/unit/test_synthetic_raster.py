@@ -57,8 +57,8 @@ def test_channels_texture_is_horizontally_banded() -> None:
     assert v > 1.3 * h
 
 
-def test_ribbons_texture_is_not_axis_banded() -> None:
-    # Aurora-Veil uses diagonal "ribbons": no strong horizontal/vertical asymmetry.
+def test_cells_texture_is_not_axis_banded() -> None:
+    # Aurora-Veil uses "cells" (Worley blobs): isotropic, no horizontal/vertical asymmetry.
     h, v = _anisotropy(render_assets("synthetic-aurora-veil", date(2026, 3, 14))[0])
     assert abs(v - h) / max(v, h) < 0.3
 
@@ -77,8 +77,8 @@ def test_render_assets_does_no_file_io(monkeypatch) -> None:
 # amd64 too. Do not re-bless without understanding why the bytes moved.
 _GOLDEN = {
     "synthetic-aurora-veil": (
-        "809f55d8d6f3e65fac8077f4341825e4c06090c0ba2bffd1723497675e35b0e8",
-        "2429b22c3347d8f8f7b0f50174c9673788dda61f0d8fc319496af628427af8ef",
+        "2f9e2ebb4fcfb0286d22d90869dd1a97793daff48720fdc8ba96f213ef19ec5d",
+        "75e7df0cb7b85a13304fb523d0aff7e3bfd9e1b1c690765ec9f4cf6379088a72",
     ),
     "synthetic-tidal-glass": (
         "5d671bf75cb7a60bb7c040d00e1407d36f7806c749bbe8bf95bd3c3110fe0066",

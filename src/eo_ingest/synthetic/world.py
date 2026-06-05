@@ -22,7 +22,7 @@ class Mission:
     region_bbox: BBox  # real-world bounds the footprints fall inside
     grid: tuple[int, int]  # (cols, rows) footprint tiling
     palette: tuple[str, str, str, str]  # 4-stop false-color ramp (hex)
-    texture: str  # directional structure: "ribbons" (diagonal) or "channels" (horizontal)
+    texture: str  # raster structure: "cells" (Worley blobs) or "channels" (horizontal bands)
     platform: str  # e.g. "moi-veil-1"
     instrument: str  # e.g. "mvi"
 
@@ -34,7 +34,7 @@ _MISSIONS: tuple[Mission, ...] = (
         region_bbox=(24.0, 67.5, 29.0, 69.5),  # Finnish Lapland
         grid=(4, 4),
         palette=("#0B0F3B", "#145C5C", "#2FBF71", "#C9A0FF"),  # auroral
-        texture="ribbons",  # diagonal auroral ribbons
+        texture="cells",  # auroral coronae as Worley blobs
         platform="moi-veil-1",
         instrument="mvi",
     ),

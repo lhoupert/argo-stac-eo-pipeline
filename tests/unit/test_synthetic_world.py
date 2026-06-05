@@ -28,9 +28,9 @@ def test_each_palette_has_four_stops() -> None:
 
 
 def test_each_mission_declares_a_known_texture() -> None:
-    # The texture drives the directional structure in the raster (ribbons vs channels).
+    # The texture drives the structure in the raster (cellular blobs vs horizontal channels).
     for m in iter_missions():
-        assert m.texture in {"ribbons", "channels"}
+        assert m.texture in {"cells", "channels"}
 
 
 def test_textures_are_distinct_per_mission() -> None:
