@@ -55,7 +55,8 @@ Resolve → download → S3 → `register` (**gated on `STAC_URL`**). **Byte-sta
 - **Deps:** T4, T5, T6 · **Files:** `src/eo_ingest/ingest.py`, `src/eo_ingest/__main__.py`, `tests/unit/test_ingest.py`.
 
 > ### ★ Checkpoint A
-> - [ ] `uv sync` · `ruff` clean · all unit+adversarial tests green · `python -m eo_ingest.ingest` runs standalone with **and** without `STAC_URL` · ≥85% coverage · CI green.
+> - [x] `uv sync` · `ruff` clean · all unit+adversarial tests green · `python -m eo_ingest.ingest` runs standalone with **and** without `STAC_URL` · ≥85% coverage · CI green.
+> - Verified 2026-06-05: 80 tests green, 97% coverage, CI green on amd64 (run 27034423212). Cross-arch determinism now pinned on decoded content (CP-SW-B). Standalone run proven under moto/respx; real-MinIO standalone awaits rung 0 (T9).
 
 ---
 
