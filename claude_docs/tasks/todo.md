@@ -86,7 +86,7 @@ Resolve → download → S3 → `register` (**gated on `STAC_URL`**). **Byte-sta
 - **Verify:** `kubectl get pods` ready · boto/mc smoke from a pod.
 - **Deps:** T1 · **Files:** `deploy/kind-cluster.yaml`, `deploy/core/minio/*.yaml`.
 
-### [ ] T11 — STAC infra + stac-browser (core) — **M**
+### [x] T11 — STAC infra + stac-browser (core) — **M**
 On the rung-1 path now (AD-4). The browser is what makes the demo *visual*.
 - **Acceptance:** bare `stac-fastapi-pgstac` + pgSTAC Postgres + Service reachable in-cluster (`http://stac-api`); pgSTAC migrated; **stac-browser** Deployment+Service pointed at the API; digest-pinned plain manifests.
 - **Verify:** `curl http://stac-api/collections` → 200 · port-forward stac-browser → collections render in the UI.
