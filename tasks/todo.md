@@ -48,7 +48,7 @@ Born in the foundation (AD-2); `find_gaps` is added later at T18.
 - **Verify:** `pytest tests/unit/test_logbook_register.py` with `respx`-mocked stac-fastapi.
 - **Deps:** T4 · **Files:** `src/eo_ingest/logbook.py`, `tests/unit/test_logbook_register.py`.
 
-### [ ] T7 — `ingest.py` (the frozen unit of work) — **M**
+### [x] T7 — `ingest.py` (the frozen unit of work) — **M**
 Resolve → download → S3 → `register` (**gated on `STAC_URL`**). **Byte-stable from here (AD-2).**
 - **Acceptance:** `python -m eo_ingest.ingest` ingests one unit against mocked source + moto S3 + mocked STAC; emits a **`rich` summary line** (item id, region, bytes, registered?); with `STAC_URL` unset, registration is skipped; `FAIL_ONCE=1` fails once then succeeds; re-run ingests nothing new.
 - **Verify:** `pytest tests/unit/test_ingest.py` · `python -m eo_ingest.ingest` standalone (both `STAC_URL` set and unset).
