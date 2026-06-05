@@ -71,26 +71,28 @@ def test_render_assets_does_no_file_io(monkeypatch) -> None:
     render_assets("synthetic-aurora-veil", date(2026, 3, 14))  # must not raise
 
 
-# Golden lock (CP-SW-B): pins the byte output for a fixed (collection, day). A change here means
-# either an intended generator change (re-pin deliberately) or a cross-arch/Pillow regression that
-# would silently drift recorded screencasts. Generated on arm64 / Pillow 12.2.0; CI re-checks on
-# amd64 too. Do not re-bless without understanding why the bytes moved.
+# Golden lock (CP-SW-B): pins the DECODED raster content for a fixed (collection, day) — i.e. the
+# pixels, not the PNG file bytes. The integer-only generator is identical across architectures, but
+# zlib's *compressed* output is not portable (macOS arm64 and Linux amd64 ship different zlib), so
+# hashing the file bytes produced cross-arch false failures. Decoded pixels are the load-bearing
+# property — content drift is what would alter recorded screencasts. A change here means an
+# intended generator change: re-pin deliberately, don't re-bless a mystery.
 _GOLDEN = {
     "synthetic-aurora-veil": (
-        "2f9e2ebb4fcfb0286d22d90869dd1a97793daff48720fdc8ba96f213ef19ec5d",
-        "75e7df0cb7b85a13304fb523d0aff7e3bfd9e1b1c690765ec9f4cf6379088a72",
+        "44b277f3bc80cfcc7420ba5fe072d375974994807f11d824010a164594a91a19",
+        "39e334255d5cca47cd39b5b95a01a7dc88ea77d600fb842870fd8e25e53bd67a",
     ),
     "synthetic-tidal-glass": (
-        "5d671bf75cb7a60bb7c040d00e1407d36f7806c749bbe8bf95bd3c3110fe0066",
-        "ba02f529ce6ad3b5dc15ac267c81ecc52940af62f70dd1b03eaabad01835c97d",
+        "efd650065218f37f105cf0200d08dcb16bde29a37fae487edd98ef021935e70a",
+        "71f3c4d525eaa4a539826a5d7fda20110c26f89d45614770971e81d93f1ebf23",
     ),
 }
 
 
-def test_render_matches_golden_hashes() -> None:
+def test_render_matches_golden_content() -> None:
     import hashlib
 
     for collection, (data_sha, thumb_sha) in _GOLDEN.items():
         data_png, thumb_png = render_assets(collection, date(2026, 3, 14))
-        assert hashlib.sha256(data_png).hexdigest() == data_sha
-        assert hashlib.sha256(thumb_png).hexdigest() == thumb_sha
+        assert hashlib.sha256(_open(data_png).tobytes()).hexdigest() == data_sha
+        assert hashlib.sha256(_open(thumb_png).tobytes()).hexdigest() == thumb_sha
