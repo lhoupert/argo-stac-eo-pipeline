@@ -24,7 +24,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · ★ = human-review chec
 - **Verify:** push a branch → Actions green.
 - **Deps:** T1 · **Files:** `.github/workflows/ci.yml`.
 
-### [ ] T3 — `config.py` (env-driven settings) — **S**
+### [x] T3 — `config.py` (env-driven settings) — **S**
 The seam (AD-1) that lets one image serve every rung.
 - **Acceptance:** loads `STAC_URL` (**optional** — unset disables registration), S3 endpoint/creds, collection, `SOURCE_TYPE`, `FAIL_ONCE`, `INGEST_SLEEP`; sane defaults; missing-required → clear error.
 - **Verify:** `pytest tests/unit/test_config.py` (TDD); covers `STAC_URL` set vs unset.
