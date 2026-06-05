@@ -49,6 +49,9 @@ scratch/
 docs/slides/*.html
 docs/slides/*.pdf
 
+# ---- Internal review notes (not part of the published repo) ----
+REVIEW.md
+
 # ---- OS / editor cruft ----
 .DS_Store
 Thumbs.db

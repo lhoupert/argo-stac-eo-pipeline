@@ -7,7 +7,7 @@ ingestion — from a fragile cron job to a self-correcting pipeline — one inde
 runnable stage at a time. The unit-of-work ingest function never changes across rungs;
 only the orchestration around it grows.
 
-See [`SPEC.md`](./SPEC.md) for the design and [`tasks/`](./tasks/) for the build plan.
+See [`claude_docs/SPEC.md`](./claude_docs/SPEC.md) for the design and [`claude_docs/tasks/`](./claude_docs/tasks/) for the build plan.
 
 ## Status
 
