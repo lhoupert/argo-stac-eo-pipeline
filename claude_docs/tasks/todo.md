@@ -93,10 +93,11 @@ On the rung-1 path now (AD-4). The browser is what makes the demo *visual*.
 - **Deps:** T10 · **Files:** `deploy/core/stac/*.yaml`, `deploy/core/stac/browser.yaml`.
 - **★ FU-1 (follow-up, tracked 2026-06-05):** `radiantearth/stac-browser` is **amd64-only** (no arm64 manifest, all tags incl. v4). Decision: *accept host emulation* on arm64 for now (works on Apple Silicon via Docker Desktop; native on amd64 CI). SPEC classifies this as a multi-arch release-blocker, so before release **build/vendor a multi-arch stac-browser image** and pin our own digest (fold into T23 multi-arch CI). The STAC API itself is multi-arch.
 
-### [ ] T12 — Argo Workflows minimal install (core) — **M**
+### [x] T12 — Argo Workflows minimal install (core) — **M**
 - **Acceptance:** Argo UI reachable via port-forward; hello workflow completes; workflow SA RBAC **least-privilege** (not cluster-admin); auth mode documented.
 - **Verify:** `argo submit --watch` · UI loads · `kubectl auth can-i` confirms scoped RBAC.
 - **Deps:** T10 · **Files:** `deploy/core/argo/*.yaml`, `rbac.yaml`, README note.
+- Verified 2026-06-06 on kind `eo-ladder`: vendored namespace-install v3.7.4 (namespaced controller+server, images digest-pinned); `hello.yaml` reached **Succeeded** as the least-privilege `argo-workflow` SA; `kubectl auth can-i` confirmed only `workflowtaskresults` (wildcard/secrets/pods **denied**); `argo-server` (`--auth-mode=server`) returned HTTP 200 + `/api/v1/info` with no token over a port-forward.
 
 ### [ ] T13 — Makefile (`up/seed/demo/down/ui/browse`, PROFILE=core|prod) — **M**
 - **Acceptance:** `make up` → kind + MinIO + STAC + stac-browser + Argo + buckets; `make ui` port-forwards Argo; `make browse` port-forwards stac-browser; `make demo STAGE=01` submits; `make down` cleans up.
