@@ -10,10 +10,11 @@ import boto3
 import httpx
 import pytest
 import respx
+from botocore.exceptions import ClientError
 from moto import mock_aws
 
 from eo_ingest.config import load_config
-from eo_ingest.ingest import TransientIngestError, ingest_one, main
+from eo_ingest.ingest import TransientIngestError, _maybe_fail_once, ingest_one, main
 
 BUCKET = "eo-assets"
 DAY = date(2026, 3, 14)
@@ -89,6 +90,19 @@ def test_rerun_ingests_nothing_new() -> None:
     ingest_one(cfg, DAY)
     result = ingest_one(cfg, DAY)
     assert result["actions"] == {"data": "skipped", "thumbnail": "skipped"}
+
+
+def test_fail_once_propagates_unexpected_s3_error() -> None:
+    # The FAIL_ONCE marker probe distinguishes "first attempt" from "retry" by a 404 on the marker.
+    # Any *other* head_object error (e.g. AccessDenied) must propagate, not be mistaken for the
+    # first attempt — otherwise a real S3 outage would masquerade as the injected transient failure.
+    class _RaisingHead:
+        def head_object(self, **_kwargs):
+            raise ClientError({"Error": {"Code": "AccessDenied"}}, "HeadObject")
+
+    cfg = load_config(_base_env(FAIL_ONCE="1"))
+    with pytest.raises(ClientError):
+        _maybe_fail_once(cfg, _RaisingHead(), BUCKET, "MOI-AV_20260314")
 
 
 @mock_aws

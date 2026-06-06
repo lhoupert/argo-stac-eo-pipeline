@@ -9,10 +9,11 @@ from datetime import date
 
 import boto3
 import pytest
+from botocore.exceptions import ClientError
 from moto import mock_aws
 
 from eo_ingest.config import load_config
-from eo_ingest.download import download_item
+from eo_ingest.download import _is_current, download_item
 from eo_ingest.stac_source import resolve_items
 from eo_ingest.synthetic import render_assets
 
@@ -101,6 +102,24 @@ def test_truncated_object_is_replaced_even_with_matching_checksum_metadata() -> 
 
     assert result["data"] == "uploaded"  # length mismatch caught
     assert _get(s3, DATA_KEY) == data_bytes
+
+
+class _RaisingHead:
+    """A minimal S3 stand-in whose head_object raises a chosen ClientError code."""
+
+    def __init__(self, code: str) -> None:
+        self._code = code
+
+    def head_object(self, **_kwargs):
+        raise ClientError({"Error": {"Code": self._code}}, "HeadObject")
+
+
+def test_unexpected_head_error_propagates_rather_than_reporting_absent() -> None:
+    # A non-404 error (e.g. AccessDenied) must NOT be read as "object missing" — that would let a
+    # checked-but-unreadable object be silently overwritten. It has to surface.
+    s3 = _RaisingHead("AccessDenied")
+    with pytest.raises(ClientError):
+        _is_current(s3, BUCKET, DATA_KEY, b"some-bytes", "deadbeef")
 
 
 @mock_aws

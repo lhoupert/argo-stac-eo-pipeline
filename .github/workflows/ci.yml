@@ -22,7 +22,9 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync
+        # --locked fails the run if uv.lock has drifted from pyproject.toml, so CI tests exactly
+        # the pinned versions the image ships (Dockerfile installs the same lock with --frozen).
+        run: uv sync --locked
 
       - name: Ruff
         run: uv run ruff check .
