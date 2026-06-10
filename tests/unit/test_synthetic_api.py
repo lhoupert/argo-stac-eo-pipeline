@@ -8,12 +8,18 @@ import eo_ingest.synthetic as synthetic
 from eo_ingest.synthetic.preview import main
 
 
-def test_public_api_exposes_the_three_callables() -> None:
-    # These three are the only import surface the rest of eo_ingest should use.
+def test_public_api_exposes_the_generation_callables() -> None:
+    # These are the only import surface the rest of eo_ingest should use.
     assert callable(synthetic.iter_missions)
     assert callable(synthetic.render_assets)
     assert callable(synthetic.build_item)
-    assert set(synthetic.__all__) == {"iter_missions", "render_assets", "build_item"}
+    assert callable(synthetic.build_collection)
+    assert set(synthetic.__all__) == {
+        "iter_missions",
+        "render_assets",
+        "build_item",
+        "build_collection",
+    }
 
 
 def test_cli_list_lists_both_missions(capsys) -> None:

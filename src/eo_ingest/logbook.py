@@ -16,6 +16,29 @@ from .config import Config
 _TIMEOUT = 30.0
 
 
+def ensure_collection(config: Config, collection: dict) -> str:
+    """Idempotently upsert a STAC ``collection`` doc; return ``"created"`` or ``"updated"``.
+
+    Rung 1 must guarantee the collection exists before :func:`register` POSTs items under it.
+    Same upsert shape as :func:`register`, against the collections endpoint: POST to create, and
+    on a create conflict fall back to PUT so re-running never errors.
+    """
+    if config.stac_url is None:
+        raise ValueError("ensure_collection requires STAC_URL to be set")
+
+    base = config.stac_url.rstrip("/")
+    collections_url = f"{base}/collections"
+
+    created = httpx.post(collections_url, json=collection, timeout=_TIMEOUT)
+    if created.status_code != httpx.codes.CONFLICT:
+        created.raise_for_status()
+        return "created"
+
+    updated = httpx.put(f"{collections_url}/{collection['id']}", json=collection, timeout=_TIMEOUT)
+    updated.raise_for_status()
+    return "updated"
+
+
 def register(config: Config, item: dict) -> str:
     """Upsert ``item`` into the catalog; return ``"created"`` or ``"updated"``.
 

@@ -112,6 +112,41 @@ def build_item(
     }
 
 
+# Generated imagery, not real observations — declared explicitly so the catalog never implies
+# otherwise. The 'synthetic-' collection-id prefix is the other half of that signal.
+_DATA_LICENSE = "CC-BY-4.0"
+
+
+def build_collection(collection: str) -> dict:
+    """A contract-valid STAC Collection doc for a mission.
+
+    Pure data derived from the :class:`Mission` record: the spatial extent *is* the mission's
+    real-world region. Rung 1 must create this before registering items, since items live under
+    ``/collections/{id}/items``. Like :func:`build_item`, this is a pure function so seeding and
+    screencasts reproduce byte-for-byte.
+    """
+    mission = get_mission(collection)
+    lon_min, lat_min, lon_max, lat_max = mission.region_bbox
+    return {
+        "type": "Collection",
+        "stac_version": "1.0.0",
+        "stac_extensions": [],
+        "id": mission.collection_id,
+        "title": f"MOI {mission.code} (synthetic)",
+        "description": (
+            f"Synthetic Meridian Observation Initiative mission {mission.collection_id} "
+            f"({mission.platform}/{mission.instrument}). Generated imagery — not real "
+            f"observations; the 'synthetic-' id prefix marks it as such."
+        ),
+        "license": _DATA_LICENSE,
+        "extent": {
+            "spatial": {"bbox": [[lon_min, lat_min, lon_max, lat_max]]},
+            "temporal": {"interval": [["2026-01-01T00:00:00Z", None]]},
+        },
+        "links": [],
+    }
+
+
 def _hex_to_rgb(value: str) -> tuple[int, int, int]:
     h = value.lstrip("#")
     return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
