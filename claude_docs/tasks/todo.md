@@ -99,10 +99,11 @@ On the rung-1 path now (AD-4). The browser is what makes the demo *visual*.
 - **Deps:** T10 · **Files:** `deploy/core/argo/*.yaml`, `rbac.yaml`, README note.
 - Verified 2026-06-06 on kind `eo-ladder`: vendored namespace-install v3.7.4 (namespaced controller+server, images digest-pinned); `hello.yaml` reached **Succeeded** as the least-privilege `argo-workflow` SA; `kubectl auth can-i` confirmed only `workflowtaskresults` (wildcard/secrets/pods **denied**); `argo-server` (`--auth-mode=server`) returned HTTP 200 + `/api/v1/info` with no token over a port-forward.
 
-### [ ] T13 — Makefile (`up/seed/demo/down/ui/browse`, PROFILE=core|prod) — **M**
+### [x] T13 — Makefile (`up/seed/demo/down/ui/browse`, PROFILE=core|prod) — **M**
 - **Acceptance:** `make up` → kind + MinIO + STAC + stac-browser + Argo + buckets; `make ui` port-forwards Argo; `make browse` port-forwards stac-browser; `make demo STAGE=01` submits; `make down` cleans up.
 - **Verify:** full `make up` → `make down` cycle leaves no dangling cluster; `make browse` opens the catalog UI.
 - **Deps:** T10, T11, T12 · **Files:** `Makefile`.
+- Done 2026-06-10: `Makefile` defines `help/up/down/ui/browse/seed/demo/build`. `up` is profile-guarded (`core` only; `prod` exits 2 → T25), creates kind, `kind load`s the one image, applies namespace→MinIO→STAC→Argo, waits on every rollout (pgSTAC 300s for first-boot migration) + the bucket Job. `demo STAGE=NN` resolves `stages/NN-*/workflows/*.yaml` and `argo submit --watch`s them, failing loudly if absent; `seed` is wired to `scripts/seed_stac.py` (placeholder until T17). `browse` forwards stac-api→8081 (client-side `SB_catalogUrl`) + stac-browser→8082. **Contract pinned offline** by `tests/unit/test_makefile.py` (targets exist, `demo` requires STAGE, `prod` guarded) — all green, ruff clean. The **live `make up`→`make down` cycle (Docker+kind) is deferred to ★ Checkpoint C** after T14/T15 land the stage-01 workflow it submits.
 
 ### [ ] T14 — `stages/01-argo-retries/` — **M**
 - **Acceptance:** CronWorkflow runs the **same image**; retries on `FAIL_ONCE` then succeeds; UI+logs show it; **asset lands in MinIO AND item appears in the STAC API**; README states the 0→1 delta.
