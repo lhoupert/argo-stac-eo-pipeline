@@ -95,6 +95,26 @@ jobs:
       - name: Build the dev container image
         run: docker build -t eo-ladder-devcontainer:ci -f .devcontainer/Dockerfile .devcontainer
 
+  slides:
+    name: render slides (Marp HTML + PDF)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Regenerate the ladder diagrams (must match committed)
+        run: |
+          python scripts/make_ladder_svg.py
+          git diff --exit-code -- docs/slides/*.svg
+      - name: Render the deck (HTML primary + PDF fallback)
+        run: |
+          npx --yes @marp-team/marp-cli@v4 docs/slides/talk.md --html -o talk.html --allow-local-files
+          npx --yes @marp-team/marp-cli@v4 docs/slides/talk.md --pdf  -o talk.pdf  --allow-local-files
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slides
+          path: |
+            talk.html
+            talk.pdf
+
   kind-smoke:
     name: kind smoke (cold/warm budget) + drift
     runs-on: ubuntu-latest

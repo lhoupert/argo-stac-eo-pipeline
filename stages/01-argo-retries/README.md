@@ -3,6 +3,8 @@
 > The crontab line moves into the cluster. Nothing about *the work* changes — the orchestration
 > around it grows, and you gain two things at once.
 
+![Ladder — you are here: rung 1](../../docs/slides/ladder-rung1.svg)
+
 This rung runs the **exact same image** as rung 0 (`eo-ingest:dev`, the frozen unit of work),
 but under **Argo Workflows**. Two changes, both purely orchestration:
 

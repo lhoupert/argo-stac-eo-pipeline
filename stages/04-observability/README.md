@@ -3,6 +3,8 @@
 > The pipeline already heals itself (rungs 1 and 3). This rung doesn't change that — it lets you
 > *see* it, at a glance, without logging into anything.
 
+![Ladder — you are here: rung 4](../../docs/slides/ladder-rung4.svg)
+
 Runs the **same image** one more way: `python -m eo_ingest.report` in-cluster, rendering a daily
 report with two sections that mirror the two levels of self-correction.
 

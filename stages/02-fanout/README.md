@@ -3,6 +3,8 @@
 > Same image, same env-driven config. The only new idea is *shape*: ingest many days **at once**
 > instead of one at a time — with a cap so "fast" never means "rude."
 
+![Ladder — you are here: rung 2](../../docs/slides/ladder-rung2.svg)
+
 Rung 1 ingested one day. Backfilling a month that way is 30 sequential runs. Rung 2 keeps the exact
 same `ingest` and fans it out across the window with Argo's `withItems`, while a **`parallelism`
 cap** bounds how many run concurrently.

@@ -226,7 +226,7 @@ The package grows here; **`ingest.py` untouched (AD-2).**
 - **Verify:** every README-related Success-Criteria box in SPEC.md checked; SPEC.md still matches the ladder.
 - **Deps:** CP-F · **Files:** `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SPEC.md`, `docs/`.
 
-### [ ] T28 — Slides + screencasts — **L (split before starting)**
+### [~] T28 — Slides + screencasts (SCAFFOLDED — content/recordings are the author's) — **L (split before starting)**
 - **Acceptance:** `docs/slides/talk.md` (Marp **HTML primary** + PDF fallback in CI); `screencast-scripts.md`; `make_screencast_data.py`; scripted recording (VHS/asciinema + Playwright); **5 clips** (rungs 1–4 + recap) GIF/APNG ≤90s; `FAIL_ONCE` retry clip; **one reusable color-blind-safe ladder SVG with a "you are here" highlight**, embedded in every stage README + the deck; **UI parity** with the minimal install.
 - **Verify:** render deck (HTML+PDF) · regenerate one clip → matches the repo.
 - **Deps:** CP-F · **Files:** `docs/slides/talk.md`, `docs/slides/screencast-scripts.md`, `scripts/make_screencast_data.py`. *Split: (a) deck + diagrams; (b) clip tooling + recordings.*

@@ -2,6 +2,8 @@
 
 > The starting point everyone recognises: a script on a laptop, run by `cron`.
 
+![Ladder — you are here: rung 0](../../docs/slides/ladder-rung0.svg)
+
 This rung runs the **one image** (the frozen unit of work) on a schedule against a **local
 MinIO**, with **no Kubernetes and no catalog**. It is deliberately fragile — its job is to make
 the problems *visible* so the later rungs have something to fix.

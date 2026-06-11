@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1310 456" role="img" aria-label="EO ingestion maturity ladder, rungs 0 to 4">
+  <title>Maturity ladder (rungs 0–4)</title>
+  <g><rect x="40" y="352" width="230" height="64" rx="10" fill="#0072B2" stroke="#F5C200" stroke-width="5"/><text x="56" y="393" font-family="sans-serif" font-size="26" font-weight="700" fill="#ffffff">0</text><text x="88" y="393" font-family="sans-serif" font-size="20" fill="#ffffff">cron</text>
+  <text x="256" y="344" text-anchor="end" font-family="sans-serif" font-size="18" font-weight="700" fill="#B8860B">★ you are here</text>
+  </g>
+  <g><rect x="290" y="274" width="230" height="64" rx="10" fill="#56B4E9" stroke="#333333" stroke-width="2"/><text x="306" y="315" font-family="sans-serif" font-size="26" font-weight="700" fill="#ffffff">1</text><text x="338" y="315" font-family="sans-serif" font-size="20" fill="#ffffff">retries + logbook</text>
+  </g>
+  <g><rect x="540" y="196" width="230" height="64" rx="10" fill="#009E73" stroke="#333333" stroke-width="2"/><text x="556" y="237" font-family="sans-serif" font-size="26" font-weight="700" fill="#ffffff">2</text><text x="588" y="237" font-family="sans-serif" font-size="20" fill="#ffffff">fan-out</text>
+  </g>
+  <g><rect x="790" y="118" width="230" height="64" rx="10" fill="#E69F00" stroke="#333333" stroke-width="2"/><text x="806" y="159" font-family="sans-serif" font-size="26" font-weight="700" fill="#ffffff">3</text><text x="838" y="159" font-family="sans-serif" font-size="20" fill="#ffffff">self-repair</text>
+  </g>
+  <g><rect x="1040" y="40" width="230" height="64" rx="10" fill="#D55E00" stroke="#333333" stroke-width="2"/><text x="1056" y="81" font-family="sans-serif" font-size="26" font-weight="700" fill="#ffffff">4</text><text x="1088" y="81" font-family="sans-serif" font-size="20" fill="#ffffff">observability</text>
+  </g>
+</svg>

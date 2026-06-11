@@ -3,6 +3,8 @@
 > The heart of the talk. Until now *you* told the pipeline what to do. Here the **logbook** does:
 > it knows what should exist, finds what's missing, and fills exactly that — nothing more.
 
+![Ladder — you are here: rung 3](../../docs/slides/ladder-rung3.svg)
+
 Rung 2 backfilled a window you named by hand. Rung 3 asks the catalog `find_gaps` — *which days in
 this window have no item?* — and fans `ingest` out over **only those days**. Same frozen unit of
 work, same env-driven image; the only new idea is **who decides**.
