@@ -167,20 +167,16 @@ The package grows here; **`ingest.py` untouched (AD-2).**
 - **Deps:** T17, T18 · **Files:** `stages/03-stac-logbook/workflows/*.yaml`, `README.md`.
 - Verified 2026-06-10 live on kind: `repair.yaml` = `ensure-collection → find-gaps → close-gaps` (Argo dynamic fan-out via `withParam` over the JSON gap list from the new `eo_ingest.list_gaps` CLI; `parallelism: 5`). Seeded aurora-veil gaps **03-04/05/10** → one `make demo STAGE=03`: find-gaps detected **exactly** those 3, close-gaps fanned out **3 ingest pods (one per gap day, no others)**, after which `find_gaps`→`[]`. **Re-run = clean no-op** (find-gaps→`[]`, **0 ingest-day pods**, still Succeeded). **Per-collection** held: tidal-glass kept its 4 gaps, untouched. New CLI unit-tested (`test_list_gaps.py`); `ingest.py` byte-frozen.
 
-> ### ★ Checkpoint E (the heart — HUMAN REVIEW)
-> - [x] Rung 3 closes gaps; re-run is a no-op; per-collection. *(Verified live 2026-06-10 — see T19.)*
-> - [ ] **`ingest.py` is byte-identical to its rung-1 form**, enforced by T20. *(Visually unchanged since rung 1; the automated invariant guard lands in T20 — not yet enforced in CI.)*
-> - [ ] **Review with the human** — the central teaching claim. *(Ready for review. The two-level self-correction story works end-to-end; T20 will lock the byte-identity claim.)*
-
-### [ ] T20 — Shared-logic invariant CI check — **S**
+### [x] T20 — Shared-logic invariant CI check — **S**
 - **Acceptance:** CI check asserts **no stage vendors/patches/shadows** `src/eo_ingest`; every stage references the one image; **fails** on a deliberate violation.
 - **Verify:** run check (passes) → temporarily copy a module into a stage → check fails → revert.
 - **Deps:** T19 · **Files:** `scripts/check_shared_logic.py`, CI wiring.
+- Done 2026-06-10: `scripts/check_shared_logic.py` enforces three invariants — (1) no `.py` vendored under `stages/`, (2) every stage workflow image is `eo-ingest:dev`, (3) `ingest.py` matches its frozen sha256 (AD-2). Wired into `ci.yml` as its own step before the unit gate. **All three violation kinds proven to fail (exit 1) then revert clean**: vendored module, foreign image (`patched-ingest:dev`), one-byte `ingest.py` tamper. Pure helpers unit-tested (`test_check_shared_logic.py`, 5 cases).
 
 > ### ★ Checkpoint E (the heart — HUMAN REVIEW)
-> - [ ] Rung 3 closes gaps; re-run is a no-op; per-collection.
-> - [ ] **`ingest.py` is byte-identical to its rung-1 form**, enforced by T20.
-> - [ ] **Review with the human** — the central teaching claim.
+> - [x] Rung 3 closes gaps; re-run is a no-op; per-collection. *(Verified live 2026-06-10 — see T19.)*
+> - [x] **`ingest.py` is byte-identical to its rung-1 form**, enforced by T20. *(Locked: `check_shared_logic.py` fails CI on any drift from sha256 `a73b3682…`; proven to catch a one-byte tamper.)*
+> - [ ] **Review with the human** — the central teaching claim. *(Ready: rungs 1–3 work live, two-level self-correction proven, byte-identity now CI-enforced. Awaiting human sign-off on the heart.)*
 
 ---
 
