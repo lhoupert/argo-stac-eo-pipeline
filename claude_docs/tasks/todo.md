@@ -146,11 +146,13 @@ On the rung-1 path now (AD-4). The browser is what makes the demo *visual*.
 
 ## Phase 4 — Rung 3 (the logbook becomes active — the heart)
 
-### [ ] T17 — `scripts/seed_stac.py` (`make seed`) — **M**
+### [x] T17 — `scripts/seed_stac.py` (`make seed`) — **M**
 Seed the **logbook** with deliberate holes (AD-4). Uses the `synthetic/` seam; themed world per the separate spec.
 - **Acceptance:** seeds **two** deterministic collections into the logbook **over two distinct, visually separable regions** **with intentional gaps**; items carry thumbnails; explicit data license; gaps reproducible and **per collection**. (Specific themed regions come from the world spec; here: just two, separable.)
 - **Verify:** `make seed` → `make browse` → two missions visible over distinct regions, planted gaps present.
 - **Deps:** T11 · **Files:** `scripts/seed_stac.py`, seed data + license note.
+- Verified 2026-06-10 live: `make seed` populated **both** missions into the logbook over distinct regions — `synthetic-aurora-veil` (Finnish Lapland, 11 items, gaps 03-04/05/10) and `synthetic-tidal-glass` (Wadden Sea, 10 items, gaps 03-02/08/09/13); per-collection gaps reproduced exactly (present-match + gaps-absent both True); items carry thumbnails; license CC-BY-4.0 (via `build_collection`). Seed **reuses the frozen `ingest_one`** over a windowed range minus planted offsets — logic in `src/eo_ingest/seed.py` (dependency-injectable, unit-tested), `scripts/seed_stac.py` is the CLI shim.
+- **Env-leak bug caught by the live run:** the host-run seed inherited an ambient `S3_BUCKET=dev-cache` (and a real cloud `S3_ENDPOINT_URL`) from the operator's shell → `NoSuchBucket`. In-cluster rungs were immune (pods pin their env). Fix: `make seed` now **pins every value it reads** (`S3_BUCKET`/`S3_ENDPOINT_URL`/`SOURCE_TYPE`/creds/`STAC_URL`) so ambient cloud profiles can't leak into the local demo. See [[ambient-cloud-env-leaks-into-host-tooling]].
 
 ### [ ] T18 — `find_gaps` (grow `logbook.py`) — **M**
 The package grows here; **`ingest.py` untouched (AD-2).**

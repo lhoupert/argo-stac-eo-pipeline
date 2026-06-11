@@ -122,12 +122,18 @@ demo: _check-stage ## Submit a stage's workflow and watch it (STAGE=NN required)
 	echo "submitting $$wf"; \
 	for f in $$wf/*.yaml; do argo submit -n $(NS) --watch "$$f"; done
 
-seed: ## Seed the logbook with deliberate gaps (T17)
-	@if [ -f scripts/seed_stac.py ]; then \
-		echo "seeding logbook via scripts/seed_stac.py"; \
-		kubectl -n $(NS) port-forward svc/stac-api 8081:80 >/dev/null 2>&1 & \
-			pf=$$!; trap 'kill $$pf 2>/dev/null' EXIT; sleep 2; \
-			STAC_URL=http://localhost:8081 uv run python scripts/seed_stac.py; \
-	else \
-		echo "scripts/seed_stac.py does not exist yet — it lands in T17."; exit 2; \
-	fi
+seed: ## Seed the logbook with two missions + deliberate gaps (T17)
+	@# The seed reuses the full ingest path, so it needs BOTH the object store (assets) and the
+	@# logbook (items). Port-forward both, set the env the ingester reads, run the script; the
+	@# trap tears the forwards down on exit.
+	@echo "seeding logbook (two collections with planted gaps) via scripts/seed_stac.py"
+	@# Pin EVERY value the seed reads, so an ambient S3_BUCKET / S3_ENDPOINT_URL / SOURCE_TYPE in the
+	@# caller's shell (e.g. a real cloud profile) can't leak into this local demo run.
+	@kubectl -n $(NS) port-forward svc/minio 9100:9000 >/dev/null 2>&1 & m=$$!; \
+		kubectl -n $(NS) port-forward svc/stac-api 8081:80 >/dev/null 2>&1 & s=$$!; \
+		trap 'kill $$m $$s 2>/dev/null' EXIT; sleep 3; \
+		SOURCE_TYPE=synthetic \
+		S3_ENDPOINT_URL=http://localhost:9100 S3_BUCKET=eo-assets \
+		AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin \
+		STAC_URL=http://localhost:8081 \
+		uv run python scripts/seed_stac.py
