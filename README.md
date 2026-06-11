@@ -34,6 +34,23 @@ make down               # delete the cluster
 
 Rung 0 (no Kubernetes) is `./stages/00-cron/run.sh`. Each rung has its own README.
 
+### Dev container / Codespaces
+
+A [`.devcontainer`](./.devcontainer/) ships everything to run the ladder — `uv`, `kind`,
+`kubectl`, `argo`, and Docker-in-Docker — pinned to the versions the cluster runs. "Reopen in
+Container" (VS Code) or open the repo in a GitHub Codespace and you get a maintainer-equivalent
+environment.
+
+**Honest sizing** (the cluster rungs are not free-tier-sized):
+
+| Environment | What runs |
+|-------------|-----------|
+| Free Codespace / 2-core, 4 GB | **Rung 0 only** (`./stages/00-cron/run.sh` — plain `docker run`, no Kubernetes) |
+| 4-core, 8 GB+ | The **full ladder** (`make up` → rungs 1–4): kind + MinIO + pgSTAC + STAC API + Argo |
+
+Rung 0 exists precisely so the entry point works on the smallest tier; the cluster appears at
+rung 1, where you need the bigger machine.
+
 ### Cold/warm budget (rung 1) — the Success-Criteria contract
 
 A fresh clone must reach a working rung 1, **with pgSTAC on the path**, within **< 15 min cold /
