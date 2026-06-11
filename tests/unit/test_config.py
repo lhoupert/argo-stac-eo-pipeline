@@ -98,3 +98,22 @@ def test_load_config_defaults_to_os_environ(monkeypatch) -> None:
     monkeypatch.delenv("STAC_URL", raising=False)
     cfg = load_config()
     assert cfg.collection == "synthetic-tidal-glass"
+
+
+def test_bbox_parsed_from_env() -> None:
+    cfg = load_config({"BBOX": "5.0,53.2,5.1,53.3"})
+    assert cfg.bbox == (5.0, 53.2, 5.1, 53.3)
+
+
+def test_bbox_unset_is_none_and_asset_defaults_to_thumbnail() -> None:
+    cfg = load_config({})
+    assert cfg.bbox is None
+    assert cfg.asset == "thumbnail"
+
+
+def test_bbox_malformed_is_a_clear_error() -> None:
+    import pytest as _pytest
+
+    from eo_ingest.config import ConfigError
+    with _pytest.raises(ConfigError, match="BBOX"):
+        load_config({"BBOX": "5.0,53.2,5.1"})  # only 3 numbers

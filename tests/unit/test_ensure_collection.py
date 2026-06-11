@@ -7,6 +7,8 @@ collection doc to the upsert so a workflow can guarantee the collection exists b
 
 from __future__ import annotations
 
+import json
+
 import httpx
 import pytest
 import respx
@@ -65,9 +67,24 @@ def test_cli_bootstraps_the_configured_collection() -> None:
 
 
 @respx.mock
-def test_cli_skips_for_non_synthetic_source() -> None:
-    # Real catalogs (earthsearch) own their collections; bootstrap is a synthetic-only convenience.
-    route = respx.post(_COLLECTIONS_URL).mock(return_value=httpx.Response(201))
-    rc = main(env={"STAC_URL": STAC_URL, "SOURCE_TYPE": "earthsearch"})
+def test_cli_mirrors_the_real_collection_for_earthsearch() -> None:
+    # Real backend: fetch the upstream collection definition and mirror it into our logbook so
+    # register() has somewhere to POST items.
+    from eo_ingest.stac_source import EARTH_SEARCH_URL
+
+    real_doc = {"type": "Collection", "id": "sentinel-2-l2a", "license": "proprietary",
+                "links": [{"rel": "self", "href": "https://upstream/self"}]}
+    upstream = respx.get(f"{EARTH_SEARCH_URL}/collections/sentinel-2-l2a").mock(
+        return_value=httpx.Response(200, json=real_doc)
+    )
+    posted = respx.post(_COLLECTIONS_URL).mock(return_value=httpx.Response(201))
+
+    rc = main(
+        env={"STAC_URL": STAC_URL, "SOURCE_TYPE": "earthsearch", "COLLECTION": "sentinel-2-l2a"}
+    )
+
     assert rc == 0
-    assert not route.called
+    assert upstream.called and posted.called
+    sent = json.loads(posted.calls.last.request.content)
+    assert sent["id"] == "sentinel-2-l2a"
+    assert sent["links"] == []  # upstream self/parent links dropped

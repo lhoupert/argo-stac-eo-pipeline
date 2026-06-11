@@ -38,6 +38,8 @@ class Config:
     aws_region: str
     fail_once: bool  # inject one transient failure then succeed (rung-1 retry demo)
     ingest_sleep: float  # per-item sleep (s) simulating IO cost for the fan-out demo
+    bbox: tuple[float, ...] | None  # earthsearch query bounds (lon_min,lat_min,lon_max,lat_max)
+    asset: str  # which asset to ingest for earthsearch (default the small thumbnail)
 
     @property
     def registration_enabled(self) -> bool:
@@ -52,6 +54,16 @@ def _parse_bool(name: str, raw: str) -> bool:
     if value in _FALSE:
         return False
     raise ConfigError(f"{name} must be one of {sorted(_TRUE | _FALSE)}, got {raw!r}")
+
+
+def _parse_bbox(name: str, raw: str) -> tuple[float, ...]:
+    parts = [p for p in (s.strip() for s in raw.split(",")) if p]
+    if len(parts) != 4:
+        raise ConfigError(f"{name} must be 'lon_min,lat_min,lon_max,lat_max', got {raw!r}")
+    try:
+        return tuple(float(p) for p in parts)
+    except ValueError as exc:
+        raise ConfigError(f"{name} must be four numbers, got {raw!r}") from exc
 
 
 def _parse_sleep(name: str, raw: str) -> float:
@@ -86,4 +98,6 @@ def load_config(env: Mapping[str, str] | None = None) -> Config:
         aws_region=env.get("AWS_REGION", "us-east-1"),
         fail_once=_parse_bool("FAIL_ONCE", env.get("FAIL_ONCE", "0")),
         ingest_sleep=_parse_sleep("INGEST_SLEEP", env.get("INGEST_SLEEP", "0")),
+        bbox=_parse_bbox("BBOX", env["BBOX"]) if (env.get("BBOX") or "").strip() else None,
+        asset=env.get("ASSET", "thumbnail"),
     )

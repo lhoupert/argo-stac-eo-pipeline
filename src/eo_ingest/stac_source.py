@@ -56,8 +56,12 @@ def _resolve_synthetic(config: Config, start: date, end: date, max_items: int) -
 def _resolve_earthsearch(
     config: Config, start: date, end: date, bbox: list[float] | None, max_items: int
 ) -> list[dict]:
+    # The frozen ingest calls resolve_items without a bbox, so fall back to the configured one
+    # (env BBOX); either way the query stays bounded.
+    if bbox is None and config.bbox is not None:
+        bbox = list(config.bbox)
     if bbox is None:
-        raise ValueError("earthsearch source requires a bbox to keep the query bounded")
+        raise ValueError("earthsearch source needs a bbox (pass one or set BBOX) to stay bounded")
     client = Client.open(EARTH_SEARCH_URL)
     search = client.search(
         collections=[config.collection],
@@ -65,7 +69,14 @@ def _resolve_earthsearch(
         datetime=f"{start.isoformat()}/{end.isoformat()}",
         max_items=max_items,
     )
-    return [item.to_dict() for item in search.items()]
+    items = [item.to_dict() for item in search.items()]
+    # Real S2 items carry ~17 assets; the frozen ingest downloads and sums *every* asset it sees, so
+    # trim each item to the single configured asset (default the small thumbnail) to keep the
+    # example light and self-consistent.
+    for item in items:
+        assets = item.get("assets", {})
+        item["assets"] = {config.asset: assets[config.asset]} if config.asset in assets else {}
+    return items
 
 
 def resolve_items(

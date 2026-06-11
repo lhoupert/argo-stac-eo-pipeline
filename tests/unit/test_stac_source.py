@@ -147,3 +147,43 @@ def test_earthsearch_requires_a_bbox(monkeypatch) -> None:
     cfg = load_config({"SOURCE_TYPE": "earthsearch", "COLLECTION": "sentinel-2-l2a"})
     with pytest.raises(ValueError, match="bbox"):
         resolve_items(cfg, START, END)
+
+
+def test_earthsearch_falls_back_to_configured_bbox(monkeypatch) -> None:
+    # The frozen ingest calls resolve_items WITHOUT a bbox, so config.bbox (env BBOX) must drive it.
+    _patch_client(monkeypatch)
+    cfg = load_config(
+        {"SOURCE_TYPE": "earthsearch", "COLLECTION": "sentinel-2-l2a", "BBOX": "5,53,6,54"}
+    )
+    items = resolve_items(cfg, START, END)  # no explicit bbox
+    assert _FakeClient.last_search["bbox"] == [5.0, 53.0, 6.0, 54.0]
+    assert items[0]["id"] == "S2_real_1"
+
+
+def test_earthsearch_trims_item_to_the_configured_asset(monkeypatch) -> None:
+    class _Multi(_FakeClient):
+        def search(self, **kwargs):
+            type(self).last_search = kwargs
+            item = pystac.Item.from_dict(
+                {
+                    "type": "Feature", "stac_version": "1.0.0", "id": "S2_multi",
+                    "collection": "sentinel-2-l2a",
+                    "geometry": {"type": "Polygon",
+                                 "coordinates": [[[5, 53], [6, 53], [6, 54], [5, 53]]]},
+                    "bbox": [5, 53, 6, 54], "properties": {"datetime": "2026-03-02T10:00:00Z"},
+                    "links": [],
+                    "assets": {
+                        "thumbnail": {"href": "https://x/t.jpg"},
+                        "red": {"href": "https://x/r.tif"},
+                        "nir": {"href": "https://x/n.tif"},
+                    },
+                }
+            )
+            return _FakeSearch([item])
+
+    _patch_client(monkeypatch, _Multi)
+    cfg = load_config(
+        {"SOURCE_TYPE": "earthsearch", "COLLECTION": "sentinel-2-l2a", "BBOX": "5,53,6,54"}
+    )
+    items = resolve_items(cfg, START, END)  # ASSET defaults to "thumbnail"
+    assert list(items[0]["assets"]) == ["thumbnail"]  # the other ~bands trimmed away

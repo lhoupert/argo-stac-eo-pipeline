@@ -211,12 +211,12 @@ The package grows here; **`ingest.py` untouched (AD-2).**
 - **Verify:** build the devcontainer image → run rung 0 inside.
 - **Deps:** T9 · **Files:** `.devcontainer/{devcontainer.json,Dockerfile}`, README section.
 
-### [ ] T25 — Prod profile — **L (split before starting)**
+### [~] T25 — Prod profile (DEFERRED — see note) — **L (split before starting)**
 - **Acceptance:** `deploy/prod/`: `eoapi-k8s` Helm, titiler-pgstac (coverage map), optional Grafana (Prometheus → error-rate dashboard); `make up PROFILE=prod` runs the **same workflows unchanged**; license audit notes Grafana AGPL. *(stac-browser already in core.)*
 - **Verify:** `make up PROFILE=prod` → run a stage unchanged → open dashboard / coverage map.
 - **Deps:** CP-F · **Files:** `deploy/prod/{eoapi,minio,grafana}/*`, README appendix. *Split: (a) eoAPI+MinIO Helm; (b) titiler+Grafana.*
 
-### [ ] T26 — `examples/real-sentinel2/` — **M**
+### [x] T26 — `examples/real-sentinel2/` — **M**
 - **Acceptance:** `SOURCE_TYPE=earthsearch` ingests real `sentinel-2-l2a` (single band, tiny bbox); Copernicus attribution/terms; `make demo-real`.
 - **Verify:** `make demo-real BBOX=… DATETIME=…` → real item in MinIO + catalog.
 - **Deps:** T7 · **Files:** `examples/real-sentinel2/*`, Makefile target.

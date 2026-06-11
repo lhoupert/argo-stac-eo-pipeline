@@ -23,8 +23,13 @@ IMAGE   ?= eo-ingest:dev
 KIND_CONFIG := deploy/kind-cluster.yaml
 CORE        := deploy/core
 
+# Real-data example knobs (examples/real-sentinel2). Small Wadden Sea bbox + a clear-sky day.
+BBOX     ?= 6.50,53.50,6.55,53.55
+DATETIME ?= 2024-07-10
+ASSET    ?= thumbnail
+
 .DEFAULT_GOAL := help
-.PHONY: help up down ui browse seed demo build rebuild _check-profile _check-stage
+.PHONY: help up down ui browse seed demo demo-real build rebuild _check-profile _check-stage
 
 # -------------------------------------------------------------------------------------------------
 help: ## Show this help
@@ -125,6 +130,20 @@ demo: _check-stage ## Submit a stage's workflow and watch it (STAGE=NN required)
 	fi; \
 	echo "submitting $$wf"; \
 	for f in $$wf/*.yaml; do argo submit -n $(NS) --watch "$$f"; done
+
+demo-real: ## Ingest a REAL Sentinel-2 scene via Earth Search (BBOX/DATETIME/ASSET overridable)
+	@# The same frozen ingester, SOURCE_TYPE=earthsearch. Runs from the host against the cluster's
+	@# MinIO + STAC (port-forwarded); env is pinned so an ambient cloud profile can't leak in.
+	@echo "ingesting REAL Sentinel-2 (bbox=$(BBOX) day=$(DATETIME) asset=$(ASSET)) — needs network"
+	@kubectl -n $(NS) port-forward svc/minio 9100:9000 >/dev/null 2>&1 & m=$$!; \
+		kubectl -n $(NS) port-forward svc/stac-api 8081:80 >/dev/null 2>&1 & s=$$!; \
+		trap 'kill $$m $$s 2>/dev/null' EXIT; sleep 3; \
+		SOURCE_TYPE=earthsearch COLLECTION=sentinel-2-l2a ASSET=$(ASSET) BBOX=$(BBOX) \
+		S3_ENDPOINT_URL=http://localhost:9100 S3_BUCKET=eo-assets \
+		AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin \
+		STAC_URL=http://localhost:8081 \
+		sh -c 'uv run python -m eo_ingest.ensure_collection && \
+		       uv run python -m eo_ingest.ingest --day $(DATETIME)'
 
 seed: ## Seed the logbook with two missions + deliberate gaps (T17)
 	@# The seed reuses the full ingest path, so it needs BOTH the object store (assets) and the

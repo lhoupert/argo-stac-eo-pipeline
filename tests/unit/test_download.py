@@ -8,7 +8,9 @@ import hashlib
 from datetime import date
 
 import boto3
+import httpx
 import pytest
+import respx
 from botocore.exceptions import ClientError
 from moto import mock_aws
 
@@ -123,12 +125,38 @@ def test_unexpected_head_error_propagates_rather_than_reporting_absent() -> None
 
 
 @mock_aws
-def test_earthsearch_asset_download_is_deferred_to_t26() -> None:
-    cfg = load_config({"SOURCE_TYPE": "earthsearch", "COLLECTION": "sentinel-2-l2a"})
-    fake_item = {
-        "collection": "sentinel-2-l2a",
-        "properties": {"datetime": "2026-03-14T10:00:00Z"},
-        "assets": {},
-    }
-    with pytest.raises(NotImplementedError, match="T26"):
-        download_item(cfg, fake_item)
+@respx.mock
+def test_earthsearch_fetches_remote_asset_into_sink_and_rewrites_href() -> None:
+    # T26: a real asset is fetched from its remote href, stored in MinIO, and the item's href is
+    # rewritten to the s3:// sink so the catalog (and ingest's byte accounting) point at our copy.
+    remote = "https://example.com/scenes/abc/thumbnail.jpg"
+    payload = b"\xff\xd8\xff" + b"jpegbytes" * 10
+    respx.get(remote).mock(return_value=httpx.Response(200, content=payload))
+
+    s3 = boto3.client("s3", region_name="us-east-1")
+    s3.create_bucket(Bucket=BUCKET)
+    cfg = load_config(
+        {
+            "SOURCE_TYPE": "earthsearch",
+            "COLLECTION": "sentinel-2-l2a",
+            "S3_BUCKET": BUCKET,
+            "S3_ENDPOINT_URL": "",  # let moto intercept the default AWS endpoint
+        }
+    )
+    def fresh_item() -> dict:  # ingest re-resolves each run, so the href starts remote each time
+        return {
+            "collection": "sentinel-2-l2a",
+            "properties": {"datetime": "2026-03-14T10:00:00Z"},
+            "assets": {"thumbnail": {"href": remote, "type": "image/jpeg"}},
+        }
+
+    item = fresh_item()
+    actions = download_item(cfg, item)
+
+    assert actions == {"thumbnail": "uploaded"}
+    sink = item["assets"]["thumbnail"]["href"]
+    assert sink == f"s3://{BUCKET}/sentinel-2-l2a/2026/03/14/thumbnail.jpg"  # href rewritten
+    bucket, key = sink[len("s3://"):].split("/", 1)
+    assert s3.get_object(Bucket=bucket, Key=key)["Body"].read() == payload  # bytes landed
+    # Re-run (fresh item, same bytes) is idempotent at the sink: byte-identical -> skipped.
+    assert download_item(cfg, fresh_item()) == {"thumbnail": "skipped"}
