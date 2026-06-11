@@ -161,10 +161,16 @@ The package grows here; **`ingest.py` untouched (AD-2).**
 - **Deps:** T6 · **Files:** `src/eo_ingest/logbook.py`, `tests/unit/test_find_gaps.py`.
 - Done 2026-06-10: `logbook.find_gaps(config, collection, start, end, max_items=)` queries the catalog once (datetime-windowed, `limit=max_items` bound), extracts each item's day via `_item_day` (top-level `datetime` → `start_datetime` fallback → `None`), and returns the inclusive-window days with no item. **9 adversarial tests all present** (empty→all gaps; fully-backfilled→`[]`; exact-missing; null-datetime fallback; neither-datetime skipped+`caplog` warning, no crash; duplicate/same-day idempotent via set; `limit` bound asserted on the request; single-day window; missing-`STAC_URL` guard). logbook.py 100% covered; `ingest.py` untouched.
 
-### [ ] T19 — `stages/03-stac-logbook/` — **M**
+### [x] T19 — `stages/03-stac-logbook/` — **M**
 - **Acceptance:** workflow does `find_gaps` → fan-out **unchanged** `ingest` over only the missing days; gaps close; **re-run ingests nothing new**; per-collection.
 - **Verify:** integration on kind: seed gaps → run stage → gaps closed → re-run is a no-op.
 - **Deps:** T17, T18 · **Files:** `stages/03-stac-logbook/workflows/*.yaml`, `README.md`.
+- Verified 2026-06-10 live on kind: `repair.yaml` = `ensure-collection → find-gaps → close-gaps` (Argo dynamic fan-out via `withParam` over the JSON gap list from the new `eo_ingest.list_gaps` CLI; `parallelism: 5`). Seeded aurora-veil gaps **03-04/05/10** → one `make demo STAGE=03`: find-gaps detected **exactly** those 3, close-gaps fanned out **3 ingest pods (one per gap day, no others)**, after which `find_gaps`→`[]`. **Re-run = clean no-op** (find-gaps→`[]`, **0 ingest-day pods**, still Succeeded). **Per-collection** held: tidal-glass kept its 4 gaps, untouched. New CLI unit-tested (`test_list_gaps.py`); `ingest.py` byte-frozen.
+
+> ### ★ Checkpoint E (the heart — HUMAN REVIEW)
+> - [x] Rung 3 closes gaps; re-run is a no-op; per-collection. *(Verified live 2026-06-10 — see T19.)*
+> - [ ] **`ingest.py` is byte-identical to its rung-1 form**, enforced by T20. *(Visually unchanged since rung 1; the automated invariant guard lands in T20 — not yet enforced in CI.)*
+> - [ ] **Review with the human** — the central teaching claim. *(Ready for review. The two-level self-correction story works end-to-end; T20 will lock the byte-identity claim.)*
 
 ### [ ] T20 — Shared-logic invariant CI check — **S**
 - **Acceptance:** CI check asserts **no stage vendors/patches/shadows** `src/eo_ingest`; every stage references the one image; **fails** on a deliberate violation.

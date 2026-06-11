@@ -1,0 +1,100 @@
+# Rung 3 — the logbook drives its own repair. The heart of the talk.
+#
+# Rung 2 backfilled a window you named by hand. Here the CATALOG decides what to do: it is asked
+# which days are missing (`find_gaps`), and ingest is fanned out over ONLY those days. Nothing else
+# changes — same frozen ingest, same env-driven image. Two-level self-correction: a single failed
+# day is retried (rung 1), and a *missing* day is detected and filled (rung 3).
+#
+#   ensure-collection ─▶ find-gaps ─▶ close-gaps (fan-out ingest over the gap days only)
+#                        (emits JSON   withParam: the gap list; empty list ⇒ clean no-op
+#                         day list)
+#
+# Per-collection: pass `-p collection=synthetic-tidal-glass` to repair the other mission.
+# `make demo STAGE=03` runs the default (synthetic-aurora-veil). Re-running closes nothing new.
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: rung3-repair-
+  namespace: eo
+  labels:
+    app: eo-ladder
+    rung: "3"
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: main
+  parallelism: 5                  # politeness cap (gaps are few; keep it gentle)
+  arguments:
+    parameters:
+      - {name: collection, value: synthetic-aurora-veil}
+      - {name: start, value: "2026-03-01"}
+      - {name: end, value: "2026-03-14"}
+  templateDefaults:
+    container:
+      imagePullPolicy: IfNotPresent
+      resources:
+        requests: {cpu: 100m, memory: 128Mi}
+        limits: {memory: 256Mi}
+  templates:
+    - name: main
+      dag:
+        tasks:
+          - name: ensure-collection
+            template: ensure-collection
+          - name: find-gaps
+            template: find-gaps
+            dependencies: [ensure-collection]
+          # Fan out one ingest per MISSING day. If find-gaps prints "[]", Argo fans out over
+          # nothing and the workflow is a clean no-op — the re-run idempotency the rung promises.
+          - name: close-gaps
+            template: ingest-day
+            dependencies: [find-gaps]
+            arguments:
+              parameters: [{name: day, value: "{{item}}"}]
+            withParam: "{{tasks.find-gaps.outputs.result}}"
+
+    - name: ensure-collection
+      container:
+        image: eo-ingest:dev
+        command: ["python", "-m", "eo_ingest.ensure_collection"]
+        env:
+          - {name: SOURCE_TYPE, value: synthetic}
+          - {name: COLLECTION, value: "{{workflow.parameters.collection}}"}
+          - {name: STAC_URL, value: http://stac-api}
+          - {name: S3_ENDPOINT_URL, value: http://minio:9000}
+          - {name: S3_BUCKET, value: eo-assets}
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom: {secretKeyRef: {name: minio-credentials, key: MINIO_ROOT_USER}}
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom: {secretKeyRef: {name: minio-credentials, key: MINIO_ROOT_PASSWORD}}
+
+    # Ask the logbook which days are missing; stdout (a JSON array) becomes outputs.result, which
+    # the DAG feeds to withParam. A `script` template captures stdout for us.
+    - name: find-gaps
+      script:
+        image: eo-ingest:dev
+        command: [bash]
+        source: |
+          python -m eo_ingest.list_gaps \
+            --start "{{workflow.parameters.start}}" --end "{{workflow.parameters.end}}"
+        env:
+          - {name: SOURCE_TYPE, value: synthetic}
+          - {name: COLLECTION, value: "{{workflow.parameters.collection}}"}
+          - {name: STAC_URL, value: http://stac-api}
+
+    # Ingest one missing day. Unchanged frozen unit — no FAIL_ONCE, no sleep.
+    - name: ingest-day
+      inputs:
+        parameters: [{name: day}]
+      container:
+        image: eo-ingest:dev
+        command: ["python", "-m", "eo_ingest.ingest", "--day", "{{inputs.parameters.day}}"]
+        env:
+          - {name: SOURCE_TYPE, value: synthetic}
+          - {name: COLLECTION, value: "{{workflow.parameters.collection}}"}
+          - {name: STAC_URL, value: http://stac-api}
+          - {name: S3_ENDPOINT_URL, value: http://minio:9000}
+          - {name: S3_BUCKET, value: eo-assets}
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom: {secretKeyRef: {name: minio-credentials, key: MINIO_ROOT_USER}}
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom: {secretKeyRef: {name: minio-credentials, key: MINIO_ROOT_PASSWORD}}
