@@ -201,7 +201,8 @@ The package grows here; **`ingest.py` untouched (AD-2).**
 
 ## Phase 6 — Polish, prod profile, real data, durability *(parallelizable after CP-F)*
 
-### [ ] T23 — CI (full) — **M**
+### [~] T23 — CI (full) (AUTHORED — green needs a push)
+- Done 2026-06-11 (authored): `ci.yml` now has 6 jobs — lint+unit+shared-logic, argo lint, multi-arch build+Trivy scan, devcontainer build, Marp HTML+PDF render (regenerates+diffs the ladder SVGs), and a kind cold-smoke gated to PR/main/schedule + a weekly **scheduled drift** cron. YAML validated locally; **"all jobs green" is verified by a push to GitHub Actions** (can't run Actions here). — **M**
 - **Acceptance:** expands T2 with `argo lint`, multi-arch digest-pinned build + **image scan**, timed kind smoke, shared-logic invariant, **devcontainer build**, Marp **HTML+PDF** render, **scheduled drift run**.
 - **Verify:** PR → all jobs green; scheduled workflow registered.
 - **Deps:** T15, T20, T24, T28 · **Files:** `.github/workflows/ci.yml`.
@@ -231,10 +232,12 @@ The package grows here; **`ingest.py` untouched (AD-2).**
 - **Verify:** render deck (HTML+PDF) · regenerate one clip → matches the repo.
 - **Deps:** CP-F · **Files:** `docs/slides/talk.md`, `docs/slides/screencast-scripts.md`, `scripts/make_screencast_data.py`. *Split: (a) deck + diagrams; (b) clip tooling + recordings.*
 
-> ### ★ Checkpoint G (Complete)
-> - [ ] Every Success-Criteria checkbox in SPEC.md met.
-> - [ ] CI green incl. scheduled drift run; deck renders; clips regenerate and match the repo.
-> - [ ] Ready for the talk.
+> ### ★ Checkpoint G (Complete) — NOT YET; needs the author + a CI push
+> - [~] Functional ladder + dev env + docs + real-data + CI authoring all **done** (T13–T24, T26, T27, T23-authored, T28-scaffolded).
+> - [ ] CI green incl. scheduled drift — **needs a push** to GitHub Actions to confirm.
+> - [ ] Deck **content** + **recorded clips** — scaffolded (T28); the narrative/recordings are the author's.
+> - [ ] **T25 prod profile** — deferred by choice (2026-06-11); revisit in a focused session.
+> - [ ] Ready for the talk — after the above.
 
 ---
 
