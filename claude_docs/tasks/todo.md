@@ -182,18 +182,20 @@ The package grows here; **`ingest.py` untouched (AD-2).**
 
 ## Phase 5 — Rung 4 (observability)
 
-### [ ] T21 — Daily report (core) — **M**
+### [x] T21 — Daily report (core) — **M**
 - **Acceptance:** plain `report()` writes stdout + markdown, sourced from the **Argo Workflows API** (no Prometheus); markdown includes a **gap heatmap** (✅/⬜ calendar grid per collection, color-blind-safe) and `rich` stdout; Argo **workflow archive** on the existing pgSTAC Postgres (one DB, two schemas), degrading to "last N live"; **documented sink seam, no plugin interface**; conveys two-level self-correction.
 - **Verify:** run a gap-closing demo → `report()` heatmap shows ⬜ flipping to ✅ as gaps close.
 - **Deps:** T19 · **Files:** `src/eo_ingest/report.py`, archive config in `deploy/core/`.
+- Done 2026-06-10/11: `report.py` renders both levels — SYSTEM (per-collection gap heatmap, ✅/⬜ glyphs = color-blind-safe by construction, sourced from `find_gaps`) and ITEM (Argo run summary, no Prometheus). `fetch_runs` prefers the durable archive, degrades to the live list, never raises; sink is a path + `rich` stdout (no plugin interface). **Archive on the existing pgSTAC Postgres** (`deploy/core/argo/archive.yaml`: persistence → pgstac DB, Argo tables in `public` schema vs pgSTAC's `pgstac` schema = one DB / two schemas), wired into `make up` with a controller+server restart. **Verified live**: heatmap showed aurora-veil 0 gaps (all ✅) vs tidal-glass 4 ⬜; after a fresh rung-1 retry, the report read "1 attempt failed then retried" sourced from the durable archive (survives workflow GC). 9 unit tests (heatmap invariants, phase/retry summary, archive→live degradation, archived-list node enrichment, markdown). Debug note: archived *list* strips node trees → enrich each archived run by uid (N+1, fine for a daily cold report).
 
-### [ ] T22 — `stages/04-observability/` — **S/M**
+### [x] T22 — `stages/04-observability/` — **S/M**
 - **Acceptance:** stage runs the report in-cluster, produces the markdown artifact; README distinguishes item-level (auto) vs system-level (surfaced).
 - **Verify:** `make demo STAGE=04` → artifact present, gaps shown closing.
 - **Deps:** T21 · **Files:** `stages/04-observability/workflows/*.yaml`, `README.md`.
+- Verified 2026-06-11 live: `report.yaml` runs `python -m eo_ingest.report` in-cluster (same image), rich heatmap to pod logs + markdown captured as the workflow's `report` **output parameter** (no artifact repository needed — lower-risk than an S3 artifact). `make demo STAGE=04` Succeeded; output carried the full report (aurora-veil 0 gaps/all ✅, tidal-glass 4 ⬜, "1 attempt failed then retried" from the archive). README contrasts item-level (automatic, Argo) vs system-level (surfaced, logbook).
 
 > ### ★ Checkpoint F
-> - [ ] Full ladder 0→4 runs in core; daily report renders and shows gaps closing.
+> - [x] Full ladder 0→4 runs in core; daily report renders and shows gaps closing. *(Verified live 2026-06-11: rungs 0–4 all run on kind `eo-ladder`; rung-4 report renders the ⬜→✅ heatmap — aurora-veil fully ✅ post-repair, tidal-glass still ⬜ — plus the durable item-level retry count. The whole ladder built this session, T13→T22.)*
 
 ---
 
