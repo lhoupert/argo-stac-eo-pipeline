@@ -9,10 +9,29 @@ only the orchestration around it grows.
 
 See [`claude_docs/SPEC.md`](./claude_docs/SPEC.md) for the design and [`claude_docs/tasks/`](./claude_docs/tasks/) for the build plan.
 
+## The ladder
+
+Folder number == rung number. Each rung is independently runnable and adds **one** idea — the
+ingest function is identical throughout; only the orchestration grows.
+
+| Rung | Stage | What's new | The lesson |
+|------|-------|-----------|------------|
+| **0** | `00-cron` | a laptop `crontab` → `docker run` (no Kubernetes) | fragile: nowhere to look at 3 am |
+| **1** | `01-argo-retries` | the same image under Argo + a STAC **logbook** | retries turn a lost day into a recovered one; you can finally *look* |
+| **2** | `02-fanout` | capped parallel backfill (`withItems`) | go fast **politely** — measured ~6× here |
+| **3** | `03-stac-logbook` | the logbook drives repair (`find_gaps`) | the system detects its own gaps and refills them |
+| **4** | `04-observability` | a daily report (Argo API + gap heatmap) | make the self-healing **visible** |
+
+> rung 5 isn't a folder — it's `make up PROFILE=prod` (eoAPI / titiler / Grafana), "where the
+> ladder leads."
+
+**Two levels of self-correction** fall out for free: an *item* that fails is **retried** (rung 1),
+and a *day* that's missing is **detected and refilled** (rung 3).
+
 ## Status
 
-🚧 Under construction (Phase 2). **Rungs 0–1 run end-to-end**; higher rungs (fan-out, the
-self-healing logbook, observability) are in progress — see [`claude_docs/tasks/todo.md`](./claude_docs/tasks/todo.md).
+✅ **Rungs 0–4 run end-to-end** on a local `kind` cluster. Polish & release work (full CI, prod
+profile, real-data example, slides) is in progress — see [`claude_docs/tasks/todo.md`](./claude_docs/tasks/todo.md).
 
 ## Dev quickstart
 
@@ -68,6 +87,48 @@ also pays the one-time image pulls. Specs: **Apple M5, 10-core (4P+6E), 32 GB**.
 numbers, *not* a CI SLA — the **CI-runner budget is measured separately** in the kind-smoke job
 (T23, pending).
 
-## License
+## Footprint — core vs. prod
 
-Apache-2.0 — see [`LICENSE`](./LICENSE).
+The **core** profile is the lightest thing that demonstrates each rung; the **prod** profile
+(`make up PROFILE=prod`) swaps in the production-grade stack, running the *same* workflows unchanged.
+
+| | Core (default) | Prod (`PROFILE=prod`) |
+|--|----------------|------------------------|
+| STAC API | bare `stac-fastapi-pgstac` + one Postgres pod | eoAPI (`eoapi-k8s` Helm) |
+| Tiles / coverage | — | titiler-pgstac |
+| Dashboards | the rung-4 markdown report | + Grafana (AGPL) |
+| Install | plain digest-pinned manifests | Helm |
+| Target machine | **4-core / 16 GB "average laptop"** (rung 0 runs on a 2-core free tier) | more |
+
+CI-runner timings are measured separately from laptop numbers (see the cold/warm budget above).
+
+## Troubleshooting
+
+| Symptom | Likely cause / fix |
+|---------|--------------------|
+| `make demo` runs the **old** code | the in-cluster image is stale — `make rebuild` (force build + `kind load`) |
+| `NoSuchBucket` / wrong endpoint from a host script | an ambient `S3_BUCKET` / `S3_ENDPOINT_URL` in your shell leaked in — the `make` targets pin their own env; if running a script directly, unset those or set them explicitly |
+| stac-browser shows items but **blank previews** | thumbnail hrefs are `s3://…`, which a browser can't fetch (tracked follow-up); the item metadata is correct |
+| `make up` slow on first run | one-time image pulls; subsequent runs are warm |
+| pgSTAC pod slow to become Ready | first boot runs the pgSTAC migration (the startup probe allows ~5 min) |
+| `make demo STAGE=NN` says "no stage matching" | that rung isn't built yet, or you mistyped the number (folder `NN-name`) |
+
+### Windows / WSL2
+
+Run everything inside **WSL2** (Ubuntu) with Docker Desktop's WSL2 backend — `kind` needs a Linux
+Docker daemon. Clone the repo *inside* the WSL2 filesystem (`~/…`, not `/mnt/c/…`) for sane file
+performance, then follow the Linux quickstart. The dev container / Codespace avoids this entirely.
+
+## Contributing
+
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md) and our [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md).
+Questions and "where's my pipeline on the ladder?" chats go in
+[Discussions](https://github.com/lhoupert/argo-stac-eo-pipeline/discussions).
+
+## License & attribution
+
+Code is Apache-2.0 — see [`LICENSE`](./LICENSE). The synthetic imagery is generated (not real
+observations), licensed CC-BY-4.0. The optional real-data example uses **Sentinel-2** via
+[Earth Search](https://earth-search.aws.element84.com/v1); Copernicus Sentinel data are free and
+open under the [Copernicus terms](https://sentinels.copernicus.eu/web/sentinel/terms-conditions) —
+attribute "contains modified Copernicus Sentinel data [year]".

@@ -206,7 +206,7 @@ The package grows here; **`ingest.py` untouched (AD-2).**
 - **Verify:** PR → all jobs green; scheduled workflow registered.
 - **Deps:** T15, T20, T24, T28 · **Files:** `.github/workflows/ci.yml`.
 
-### [ ] T24 — `.devcontainer` — **M**
+### [x] T24 — `.devcontainer` — **M**
 - **Acceptance:** uv/kubectl/kind/argo + docker-in-docker; "reopen in container" works; CI-built; README documents Codespaces with honest sizing (rung 0 on free tier).
 - **Verify:** build the devcontainer image → run rung 0 inside.
 - **Deps:** T9 · **Files:** `.devcontainer/{devcontainer.json,Dockerfile}`, README section.
@@ -221,7 +221,7 @@ The package grows here; **`ingest.py` untouched (AD-2).**
 - **Verify:** `make demo-real BBOX=… DATETIME=…` → real item in MinIO + catalog.
 - **Deps:** T7 · **Files:** `examples/real-sentinel2/*`, Makefile target.
 
-### [ ] T27 — README + OSS hygiene + SPEC sync — **M**
+### [x] T27 — README + OSS hygiene + SPEC sync — **M**
 - **Acceptance:** full README (ladder narrated, quickstart, cold/warm timings, footprint core-vs-prod, "average laptop" 4-core/16 GB, runner specs separate, **troubleshooting**, Windows/WSL2, QR target); `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, labelled `good first issue`s, governance statement, Discussions pointer; **SPEC.md sync** — verify it still matches the built ladder (AD-4 / STAC-from-rung-1 already incorporated).
 - **Verify:** every README-related Success-Criteria box in SPEC.md checked; SPEC.md still matches the ladder.
 - **Deps:** CP-F · **Files:** `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SPEC.md`, `docs/`.
