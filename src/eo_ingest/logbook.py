@@ -72,13 +72,17 @@ def _item_day(feature: dict) -> date | None:
 
     Prefer the top-level ``datetime``; a STAC item is allowed to set it null and instead carry a
     ``start_datetime``/``end_datetime`` range, so fall back to ``start_datetime``. An item with
-    neither is undatable — the caller skips it rather than crash.
+    neither — or with a present-but-unparseable timestamp — is undatable, so this returns None and
+    the caller skips it rather than crash on real-world untidy data.
     """
     props = feature.get("properties") or {}
     stamp = props.get("datetime") or props.get("start_datetime")
     if not stamp:
         return None
-    return date.fromisoformat(stamp[:10])
+    try:
+        return date.fromisoformat(stamp[:10])
+    except (ValueError, TypeError):
+        return None
 
 
 def find_gaps(
@@ -107,13 +111,25 @@ def find_gaps(
     }
     resp = httpx.get(f"{base}/collections/{collection}/items", params=params, timeout=_TIMEOUT)
     resp.raise_for_status()
+    features = resp.json().get("features", [])
+
+    # We read a single page bounded by max_items (no pagination). If it comes back full, the window
+    # likely has more items than we fetched, so present days are under-counted and we would report
+    # days that actually exist as gaps. Warn loudly rather than do that silently.
+    if len(features) >= max_items:
+        _logger.warning(
+            "find_gaps hit the max_items=%d ceiling for %r — results may be truncated and report "
+            "false gaps; raise max_items above the expected item count",
+            max_items,
+            collection,
+        )
 
     present: set[date] = set()
-    for feature in resp.json().get("features", []):
+    for feature in features:
         day = _item_day(feature)
         if day is None:
             _logger.warning(
-                "skipping undatable item %r (no datetime/start_datetime)", feature.get("id")
+                "skipping undatable item %r (missing or unparseable datetime)", feature.get("id")
             )
             continue
         present.add(day)

@@ -113,6 +113,30 @@ def test_query_is_bounded_by_max_items() -> None:
 
 
 @respx.mock
+def test_malformed_datetime_is_skipped_with_a_warning(caplog) -> None:
+    # A present-but-unparseable datetime is "untidy real data": skip it with a warning, never
+    # crash the whole scan (the function advertises robustness to real catalog data).
+    feats = [_feature(f"d{d}", datetime_=f"2026-03-0{d}T10:00:00Z") for d in (1, 2, 3, 4, 5, 6)]
+    feats.append(_feature("bad7", datetime_="not-a-real-date"))
+    _mock_items(feats)
+    with caplog.at_level(logging.WARNING):
+        gaps = find_gaps(_cfg(), COLLECTION, START, END)
+    assert gaps == [date(2026, 3, 7)]  # the undatable item's day stays a gap
+    assert any("bad7" in r.message for r in caplog.records)
+
+
+@respx.mock
+def test_hitting_the_max_items_ceiling_warns_about_truncation(caplog) -> None:
+    # If the page is full, results may be truncated -> present days under-counted -> false gaps.
+    # Warn loudly rather than silently report days that actually exist as missing.
+    feats = [_feature(f"d{d}", datetime_=f"2026-03-0{d}T10:00:00Z") for d in (1, 2, 3)]
+    _mock_items(feats)
+    with caplog.at_level(logging.WARNING):
+        find_gaps(_cfg(), COLLECTION, START, END, max_items=3)
+    assert any("max_items" in r.message or "truncat" in r.message.lower() for r in caplog.records)
+
+
+@respx.mock
 def test_single_day_window() -> None:
     _mock_items([])
     assert find_gaps(_cfg(), COLLECTION, START, START) == [START]
