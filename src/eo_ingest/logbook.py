@@ -9,11 +9,15 @@ create, and on a create conflict fall back to PUT so re-running never duplicates
 
 from __future__ import annotations
 
+import logging
+from datetime import date, timedelta
+
 import httpx
 
 from .config import Config
 
 _TIMEOUT = 30.0
+_logger = logging.getLogger(__name__)
 
 
 def ensure_collection(config: Config, collection: dict) -> str:
@@ -61,3 +65,59 @@ def register(config: Config, item: dict) -> str:
     updated = httpx.put(f"{items_url}/{item['id']}", json=item, timeout=_TIMEOUT)
     updated.raise_for_status()
     return "updated"
+
+
+def _item_day(feature: dict) -> date | None:
+    """The observation day of an item, or None if it carries no usable timestamp.
+
+    Prefer the top-level ``datetime``; a STAC item is allowed to set it null and instead carry a
+    ``start_datetime``/``end_datetime`` range, so fall back to ``start_datetime``. An item with
+    neither is undatable — the caller skips it rather than crash.
+    """
+    props = feature.get("properties") or {}
+    stamp = props.get("datetime") or props.get("start_datetime")
+    if not stamp:
+        return None
+    return date.fromisoformat(stamp[:10])
+
+
+def find_gaps(
+    config: Config,
+    collection: str,
+    start: date,
+    end: date,
+    *,
+    max_items: int = 1000,
+) -> list[date]:
+    """Days in the inclusive ``[start, end]`` window that have NO item in ``collection``.
+
+    The logbook turning active (AD-2): rung 3 fans out ``ingest`` over exactly these days. Queries
+    the catalog once, bounded by ``max_items`` (a deliberate ceiling — set it ≥ the window size).
+    Robust to real-world catalog data: items with a null ``datetime`` fall back to
+    ``start_datetime``; items with neither are skipped with a warning; duplicate ids / same-day
+    items collapse (presence is a set), so the result is idempotent.
+    """
+    if config.stac_url is None:
+        raise ValueError("find_gaps requires STAC_URL to be set")
+
+    base = config.stac_url.rstrip("/")
+    params = {
+        "datetime": f"{start.isoformat()}T00:00:00Z/{end.isoformat()}T23:59:59Z",
+        "limit": max_items,
+    }
+    resp = httpx.get(f"{base}/collections/{collection}/items", params=params, timeout=_TIMEOUT)
+    resp.raise_for_status()
+
+    present: set[date] = set()
+    for feature in resp.json().get("features", []):
+        day = _item_day(feature)
+        if day is None:
+            _logger.warning(
+                "skipping undatable item %r (no datetime/start_datetime)", feature.get("id")
+            )
+            continue
+        present.add(day)
+
+    window = ((end - start).days + 1)
+    expected = (start + timedelta(days=i) for i in range(window))
+    return sorted(day for day in expected if day not in present)

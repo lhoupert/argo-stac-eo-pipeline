@@ -154,11 +154,12 @@ Seed the **logbook** with deliberate holes (AD-4). Uses the `synthetic/` seam; t
 - Verified 2026-06-10 live: `make seed` populated **both** missions into the logbook over distinct regions — `synthetic-aurora-veil` (Finnish Lapland, 11 items, gaps 03-04/05/10) and `synthetic-tidal-glass` (Wadden Sea, 10 items, gaps 03-02/08/09/13); per-collection gaps reproduced exactly (present-match + gaps-absent both True); items carry thumbnails; license CC-BY-4.0 (via `build_collection`). Seed **reuses the frozen `ingest_one`** over a windowed range minus planted offsets — logic in `src/eo_ingest/seed.py` (dependency-injectable, unit-tested), `scripts/seed_stac.py` is the CLI shim.
 - **Env-leak bug caught by the live run:** the host-run seed inherited an ambient `S3_BUCKET=dev-cache` (and a real cloud `S3_ENDPOINT_URL`) from the operator's shell → `NoSuchBucket`. In-cluster rungs were immune (pods pin their env). Fix: `make seed` now **pins every value it reads** (`S3_BUCKET`/`S3_ENDPOINT_URL`/`SOURCE_TYPE`/creds/`STAC_URL`) so ambient cloud profiles can't leak into the local demo. See [[ambient-cloud-env-leaks-into-host-tooling]].
 
-### [ ] T18 — `find_gaps` (grow `logbook.py`) — **M**
+### [x] T18 — `find_gaps` (grow `logbook.py`) — **M**
 The package grows here; **`ingest.py` untouched (AD-2).**
 - **Acceptance (adversarial):** null top-level `datetime` → `start_datetime` fallback, never crashes; **neither** datetime → skipped with a warning; duplicate ids / re-run → idempotent; `find_gaps` boundaries (empty + fully-backfilled → `[]`); `max_items` bound exercised.
 - **Verify:** `pytest tests/unit/test_find_gaps.py` (all adversarial cases present, not just guards).
 - **Deps:** T6 · **Files:** `src/eo_ingest/logbook.py`, `tests/unit/test_find_gaps.py`.
+- Done 2026-06-10: `logbook.find_gaps(config, collection, start, end, max_items=)` queries the catalog once (datetime-windowed, `limit=max_items` bound), extracts each item's day via `_item_day` (top-level `datetime` → `start_datetime` fallback → `None`), and returns the inclusive-window days with no item. **9 adversarial tests all present** (empty→all gaps; fully-backfilled→`[]`; exact-missing; null-datetime fallback; neither-datetime skipped+`caplog` warning, no crash; duplicate/same-day idempotent via set; `limit` bound asserted on the request; single-day window; missing-`STAC_URL` guard). logbook.py 100% covered; `ingest.py` untouched.
 
 ### [ ] T19 — `stages/03-stac-logbook/` — **M**
 - **Acceptance:** workflow does `find_gaps` → fan-out **unchanged** `ingest` over only the missing days; gaps close; **re-run ingests nothing new**; per-collection.
