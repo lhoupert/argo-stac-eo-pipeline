@@ -133,13 +133,14 @@ On the rung-1 path now (AD-4). The browser is what makes the demo *visual*.
 
 ## Phase 3 — Rung 2 (fan-out backfill)
 
-### [ ] T16 — `stages/02-fanout/` — **M**
+### [x] T16 — `stages/02-fanout/` — **M**
 - **Acceptance:** fan-out (`withItems`/`withParam`) parallelizes backfill; **parallelism capped** (politeness); `INGEST_SLEEP≈2s` × ~30 items, cap ≈10 → visible ~4–6× collapse; **measured** numbers in README + re-derived in CI; many items appear in the catalog at once.
 - **Verify:** run backfill sequential vs fan-out → compare wall-clock → matches README.
 - **Deps:** T14 · **Files:** `stages/02-fanout/workflows/*.yaml`, `README.md`.
+- Verified 2026-06-10 live on kind `eo-ladder` (Apple M5, single node, warm image cache): `backfill.yaml` fans out 30 days (`withItems`) with workflow-level `parallelism: 10`; **no new `src/` code** (frozen `ingest.py` + existing `INGEST_SLEEP` seam; plan listed workflow+README files only). Measured **fan-out 50s vs sequential 311s = 6.2×** (sequential baseline = same workflow `parallelism: 1` via sed, no duplicate manifest). Catalog filled empty→**30 items** `MOI-AV_20260301…30` in one go. README records the numbers + the honest "why 6.2× not 10×" (single-node pod-startup overhead erodes the cap; the cap is a politeness ceiling, not a throughput guarantee).
 
 > ### ★ Checkpoint D
-> - [ ] Deterministic, polite ~4–6× speedup; numbers recorded in the stage README.
+> - [x] Deterministic, polite ~4–6× speedup; numbers recorded in the stage README. *(Verified 2026-06-10: 6.2× measured — in range; cap=10 politeness ceiling; 30 items deterministic via the synthetic seam.)*
 
 ---
 

@@ -1,0 +1,106 @@
+# Rung 2 — fan-out backfill. STILL the same image, still env-driven (AD-1); only the orchestration
+# changes: instead of one day, we backfill a 30-day window, and Argo runs many ingests AT ONCE.
+#
+# The teaching beat: a backfill that took N×(per-item cost) sequentially collapses to roughly
+# ceil(N / cap) waves when fanned out — but POLITELY. `parallelism: 10` caps how many ingests hit
+# the source/sink concurrently, so we go fast without hammering anyone (and a single kind node
+# isn't overrun). INGEST_SLEEP=2 stands in for real per-item IO cost so the speedup is visible.
+#
+# `make demo STAGE=02` submits and watches this. The sequential baseline for the README speedup
+# number is the SAME workflow with `parallelism: 1` (see README) — no separate manifest to drift.
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: rung2-backfill-
+  namespace: eo
+  labels:
+    app: eo-ladder
+    rung: "2"
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: main
+  parallelism: 10                 # politeness cap: at most 10 ingests run concurrently
+  templateDefaults:
+    container:
+      imagePullPolicy: IfNotPresent
+      resources:
+        requests: {cpu: 100m, memory: 128Mi}
+        limits: {memory: 256Mi}
+  templates:
+    - name: main
+      dag:
+        tasks:
+          - name: ensure-collection
+            template: ensure-collection
+          # Fan out one ingest pod per day across the window; Argo throttles to `parallelism`.
+          - name: backfill
+            template: ingest-day
+            dependencies: [ensure-collection]
+            arguments:
+              parameters: [{name: day, value: "{{item}}"}]
+            withItems:
+              - "2026-03-01"
+              - "2026-03-02"
+              - "2026-03-03"
+              - "2026-03-04"
+              - "2026-03-05"
+              - "2026-03-06"
+              - "2026-03-07"
+              - "2026-03-08"
+              - "2026-03-09"
+              - "2026-03-10"
+              - "2026-03-11"
+              - "2026-03-12"
+              - "2026-03-13"
+              - "2026-03-14"
+              - "2026-03-15"
+              - "2026-03-16"
+              - "2026-03-17"
+              - "2026-03-18"
+              - "2026-03-19"
+              - "2026-03-20"
+              - "2026-03-21"
+              - "2026-03-22"
+              - "2026-03-23"
+              - "2026-03-24"
+              - "2026-03-25"
+              - "2026-03-26"
+              - "2026-03-27"
+              - "2026-03-28"
+              - "2026-03-29"
+              - "2026-03-30"
+
+    - name: ensure-collection
+      container:
+        image: eo-ingest:dev
+        command: ["python", "-m", "eo_ingest.ensure_collection"]
+        env:
+          - {name: SOURCE_TYPE, value: synthetic}
+          - {name: COLLECTION, value: synthetic-aurora-veil}
+          - {name: STAC_URL, value: http://stac-api}
+          - {name: S3_ENDPOINT_URL, value: http://minio:9000}
+          - {name: S3_BUCKET, value: eo-assets}
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom: {secretKeyRef: {name: minio-credentials, key: MINIO_ROOT_USER}}
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom: {secretKeyRef: {name: minio-credentials, key: MINIO_ROOT_PASSWORD}}
+
+    # One day's ingest. No FAIL_ONCE here (rung 2 is about throughput, not retries); INGEST_SLEEP
+    # simulates per-item IO so the parallel collapse is observable on the wall clock.
+    - name: ingest-day
+      inputs:
+        parameters: [{name: day}]
+      container:
+        image: eo-ingest:dev
+        command: ["python", "-m", "eo_ingest.ingest", "--day", "{{inputs.parameters.day}}"]
+        env:
+          - {name: INGEST_SLEEP, value: "2"}
+          - {name: SOURCE_TYPE, value: synthetic}
+          - {name: COLLECTION, value: synthetic-aurora-veil}
+          - {name: STAC_URL, value: http://stac-api}
+          - {name: S3_ENDPOINT_URL, value: http://minio:9000}
+          - {name: S3_BUCKET, value: eo-assets}
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom: {secretKeyRef: {name: minio-credentials, key: MINIO_ROOT_USER}}
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom: {secretKeyRef: {name: minio-credentials, key: MINIO_ROOT_PASSWORD}}
