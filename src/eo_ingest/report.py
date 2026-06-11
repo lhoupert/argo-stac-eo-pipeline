@@ -71,39 +71,65 @@ class Run:
     retried_attempts: int  # failed pod attempts that were retried (item-level self-correction)
 
 
-def _normalize_run(workflow: dict) -> Run:
-    status = workflow.get("status") or {}
-    nodes = (status.get("nodes") or {}).values()
-    # A failed Pod node inside a run is an attempt that retried (our steps have retryStrategy).
-    retried = sum(1 for n in nodes if n.get("type") == "Pod" and n.get("phase") == "Failed")
-    return Run(
-        name=(workflow.get("metadata") or {}).get("name", "?"),
-        phase=status.get("phase", "Unknown"),
-        retried_attempts=retried,
+def _count_retried(nodes: dict | None) -> int:
+    """Failed Pod nodes = attempts that retried (our steps have a retryStrategy)."""
+    return sum(
+        1
+        for n in (nodes or {}).values()
+        if n.get("type") == "Pod" and n.get("phase") == "Failed"
     )
+
+
+def _get_json(url: str, params: dict) -> dict:
+    resp = httpx.get(url, params=params, timeout=_TIMEOUT, verify=False)
+    resp.raise_for_status()
+    return resp.json()
 
 
 def fetch_runs(argo_api_url: str, namespace: str, *, last_n: int = 20) -> list[Run]:
     """Recent workflow runs, preferring the durable archive and degrading to the live list.
 
-    Never raises: if both the archive and the live API are unreachable, returns ``[]`` so the
-    report still renders its STAC-sourced half. TLS verification is off because argo-server uses a
-    self-signed cert (local demo).
+    The archive outlives workflow GC (so the retry history survives), but its *list* view strips
+    the node tree — so for archived runs we fetch each full workflow by uid to recover the
+    failed-then-retried attempts. That's an N+1, but this is a once-a-day cold report over a small
+    ``last_n``, not a hot path. The live list already carries nodes, so it needs no enrichment.
+
+    Never raises: if both sources are unreachable, returns ``[]`` so the report still renders its
+    STAC-sourced half. TLS verification is off because argo-server uses a self-signed cert (local).
     """
     base = argo_api_url.rstrip("/")
-    attempts = (
-        (f"{base}/api/v1/archived-workflows", {"listOptions.limit": last_n}),
-        (f"{base}/api/v1/workflows/{namespace}", {"listOptions.limit": last_n}),
+    sources = (
+        ("archive", f"{base}/api/v1/archived-workflows", {"listOptions.limit": last_n,
+                                                          "namespace": namespace}),
+        ("live", f"{base}/api/v1/workflows/{namespace}", {"listOptions.limit": last_n}),
     )
-    for url, params in attempts:
+    for kind, url, params in sources:
         try:
-            resp = httpx.get(url, params=params, timeout=_TIMEOUT, verify=False)
-            resp.raise_for_status()
+            items = _get_json(url, params).get("items") or []
         except httpx.HTTPError:
             continue
-        items = resp.json().get("items") or []
-        if items:
-            return [_normalize_run(w) for w in items]
+        if not items:
+            continue
+        runs: list[Run] = []
+        for w in items:
+            status = w.get("status") or {}
+            meta = w.get("metadata") or {}
+            nodes = status.get("nodes")
+            if not nodes and kind == "archive":
+                # The archived list drops nodes; pull the full archived workflow for the retry tree.
+                try:
+                    nodes = (_get_json(f"{base}/api/v1/archived-workflows/{meta.get('uid')}", {})
+                             .get("status") or {}).get("nodes")
+                except httpx.HTTPError:
+                    nodes = None
+            runs.append(
+                Run(
+                    name=meta.get("name", "?"),
+                    phase=status.get("phase", "Unknown"),
+                    retried_attempts=_count_retried(nodes),
+                )
+            )
+        return runs
     return []
 
 

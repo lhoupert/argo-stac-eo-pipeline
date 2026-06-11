@@ -87,6 +87,22 @@ def test_fetch_runs_uses_the_archive_when_available() -> None:
 
 
 @respx.mock
+def test_fetch_runs_enriches_archived_runs_that_lack_nodes() -> None:
+    # The archived LIST strips node trees, so a run with no nodes must be re-fetched by uid to
+    # recover the failed-then-retried attempts.
+    stub = {"metadata": {"name": "a", "uid": "u1"}, "status": {"phase": "Succeeded"}}  # no nodes
+    respx.get(f"{ARGO}/api/v1/archived-workflows").mock(
+        return_value=httpx.Response(200, json={"items": [stub]})
+    )
+    full = respx.get(f"{ARGO}/api/v1/archived-workflows/u1").mock(
+        return_value=httpx.Response(200, json=_wf("a", "Succeeded", failed_pods=2))
+    )
+    runs = fetch_runs(ARGO, NS)
+    assert full.called  # had to enrich
+    assert runs[0].retried_attempts == 2
+
+
+@respx.mock
 def test_fetch_runs_degrades_to_live_when_archive_unavailable() -> None:
     # Archive not configured yet (404/empty) -> fall back to the live workflows endpoint.
     respx.get(f"{ARGO}/api/v1/archived-workflows").mock(return_value=httpx.Response(404))

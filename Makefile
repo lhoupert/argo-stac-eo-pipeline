@@ -76,6 +76,10 @@ up: _check-profile build ## Bring up the full core stack on kind
 	kubectl apply -f $(CORE)/stac/
 	kubectl apply -n $(NS) -f $(CORE)/argo/install.yaml
 	kubectl apply -f $(CORE)/argo/rbac.yaml
+	@# Workflow archive on the pgSTAC Postgres (durable run history for the rung-4 report). Both the
+	@# controller and the server read this config at startup, so restart them to pick up persistence.
+	kubectl apply -f $(CORE)/argo/archive.yaml
+	kubectl -n $(NS) rollout restart deploy/workflow-controller deploy/argo-server
 	@# 4. Wait for everything to be Ready (pgSTAC migrates on first boot — give it room).
 	kubectl -n $(NS) rollout status deploy/minio --timeout=120s
 	kubectl -n $(NS) rollout status deploy/pgstac --timeout=300s
