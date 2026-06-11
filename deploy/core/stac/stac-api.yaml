@@ -1,5 +1,7 @@
 # stac-fastapi-pgstac — the logbook API. Bare install, reachable in-cluster at http://stac-api.
 # Reads/writes pgSTAC; CORS defaults to "*" (fine for the local demo, lets stac-browser call it).
+# The Transactions extension is enabled (see ENABLE_TRANSACTIONS_EXTENSIONS below) so the pipeline
+# can WRITE — without it the API is read-only and the logbook could never be populated.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -42,6 +44,9 @@ spec:
               value: pgstac
             - name: POSTGRES_PORT
               value: "5432"
+            # Enable writes (POST/PUT collections + items). Read-only without it -> every write 405s.
+            - name: ENABLE_TRANSACTIONS_EXTENSIONS
+              value: "TRUE"
             - name: APP_HOST
               value: "0.0.0.0"
             # The image's launcher serves on 8080 regardless of APP_PORT; match it.

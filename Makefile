@@ -24,7 +24,7 @@ KIND_CONFIG := deploy/kind-cluster.yaml
 CORE        := deploy/core
 
 .DEFAULT_GOAL := help
-.PHONY: help up down ui browse seed demo build _check-profile _check-stage
+.PHONY: help up down ui browse seed demo build rebuild _check-profile _check-stage
 
 # -------------------------------------------------------------------------------------------------
 help: ## Show this help
@@ -55,6 +55,10 @@ build: ## Build the one ingester image (skipped if it already exists)
 	else \
 		echo "building $(IMAGE)"; docker build -t "$(IMAGE)" .; \
 	fi
+
+rebuild: ## Force-rebuild the ingester image and reload it into the cluster (after code changes)
+	docker build -t "$(IMAGE)" .
+	kind load docker-image "$(IMAGE)" --name "$(CLUSTER)"
 
 up: _check-profile build ## Bring up the full core stack on kind
 	@# 1. Cluster (idempotent).

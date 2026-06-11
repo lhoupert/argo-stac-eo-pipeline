@@ -105,10 +105,16 @@ On the rung-1 path now (AD-4). The browser is what makes the demo *visual*.
 - **Deps:** T10, T11, T12 · **Files:** `Makefile`.
 - Done 2026-06-10: `Makefile` defines `help/up/down/ui/browse/seed/demo/build`. `up` is profile-guarded (`core` only; `prod` exits 2 → T25), creates kind, `kind load`s the one image, applies namespace→MinIO→STAC→Argo, waits on every rollout (pgSTAC 300s for first-boot migration) + the bucket Job. `demo STAGE=NN` resolves `stages/NN-*/workflows/*.yaml` and `argo submit --watch`s them, failing loudly if absent; `seed` is wired to `scripts/seed_stac.py` (placeholder until T17). `browse` forwards stac-api→8081 (client-side `SB_catalogUrl`) + stac-browser→8082. **Contract pinned offline** by `tests/unit/test_makefile.py` (targets exist, `demo` requires STAGE, `prod` guarded) — all green, ruff clean. The **live `make up`→`make down` cycle (Docker+kind) is deferred to ★ Checkpoint C** after T14/T15 land the stage-01 workflow it submits.
 
-### [ ] T14 — `stages/01-argo-retries/` — **M**
+### [x] T14 — `stages/01-argo-retries/` — **M**
 - **Acceptance:** CronWorkflow runs the **same image**; retries on `FAIL_ONCE` then succeeds; UI+logs show it; **asset lands in MinIO AND item appears in the STAC API**; README states the 0→1 delta.
 - **Verify:** `make demo STAGE=01` → observe retry in UI → asset in MinIO → `make browse` shows the item appear in stac-browser.
 - **Deps:** T8, T13 · **Files:** `stages/01-argo-retries/workflows/*.yaml`, `README.md`.
+- Verified 2026-06-10 on kind `eo-ladder` (live, not mocked): `make up` brought the full stack up in ~73s; `make demo STAGE=01` ran the Workflow to **Succeeded** with `ingest(0) ✖ → ingest(1) ✔` (FAIL_ONCE fail-then-retry visible in `argo`/UI). Asset in MinIO (`synthetic-aurora-veil/2026/03/14/{data,thumbnail}.png`, 76,605 B; `_fail_once` marker present) **and** item `MOI-AV_20260314` registered in the STAC API under an auto-created `synthetic-aurora-veil` collection (both `data`+`thumbnail` assets). `workflows/ingest.yaml` (immediate, what `make demo` runs) + `cronworkflow.yaml` (the scheduled `0 3 * * *` form = the literal crontab→Argo delta).
+- **Two integration gaps surfaced by the live run** (invisible to the respx/moto unit tests, fixed here):
+  - **collection bootstrap** — `register()` POSTs items under `/collections/{id}/items`, so the collection must pre-exist. Since `ingest.py` is frozen (AD-2), added `logbook.ensure_collection()` + `synthetic.build_collection()` + the `eo_ingest.ensure_collection` CLI, run as a first workflow step. (committed `2b75f76`)
+  - **T11 fix — Transactions extension was off.** Bare stac-fastapi-pgstac is **read-only by default**; every write 405'd. Added `ENABLE_TRANSACTIONS_EXTENSIONS=TRUE` to `deploy/core/stac/stac-api.yaml`. Without it the logbook could never be populated — affects all write rungs, not just T14.
+- **Makefile `rebuild` target added** — the review's "build skips rebuild on code change" finding bit immediately (stale image lacked `ensure_collection`); `make rebuild` force-rebuilds + `kind load`s.
+- Left for **★ Checkpoint C** (human review): the timed cold/warm budget (T15) and `make browse` visual confirmation in stac-browser.
 
 ### [ ] T15 — Acceptance/contract smoke + cold/warm budget — **M**  ⚠️ CONTRACT LAYER
 - **Acceptance:** timed `make up && make demo STAGE=01` reaches working rung-1 **with pgSTAC on the path** within **<15 min cold / <5 min warm**; elapsed recorded; README states it with CI-runner specs separately.
