@@ -2,7 +2,7 @@
 
 > Companion repo for the FOSS4G Europe 2026 [talk](https://github.com/lhoupert/foss4g2026-talk) *"From Cron Job to Self-Healing Pipeline."*
 
-A clone-and-run reference that walks the **maturity ladder** for Earth-observation data
+A clone-and-run reference that walks **a maturity ladder** for Earth-observation data
 ingestion — from a fragile cron job to a self-correcting pipeline — one independently
 runnable stage at a time. The unit-of-work ingest function never changes across rungs;
 only the orchestration around it grows.
@@ -12,7 +12,7 @@ only the orchestration around it grows.
 Folder number == rung number. Each rung is independently runnable and adds **one** idea — the
 ingest function is identical throughout; only the orchestration grows.
 
-| Rung | Stage | What's new | The lesson |
+| Rung | Stage | What's new | What it changes |
 |------|-------|-----------|------------|
 | **0** | `00-cron` | a laptop `crontab` → `docker run` (no Kubernetes) | fragile: nowhere to look at 3 am |
 | **1** | `01-argo-retries` | the same image under Argo + a STAC **logbook** | retries turn a lost day into a recovered one; you can finally *look* |
@@ -23,7 +23,7 @@ ingest function is identical throughout; only the orchestration grows.
 > rung 5 isn't a folder — the ladder continues to a production-grade stack (eoAPI, titiler,
 > Grafana); the design lives in `claude_docs/SPEC.md`.
 
-**Two levels of self-correction** fall out for free: an *item* that fails is **retried** (rung 1),
+**Two levels of self-correction** emerge from the design: an *item* that fails is **retried** (rung 1),
 and a *day* that's missing is **detected and refilled** (rung 3).
 
 ## Status

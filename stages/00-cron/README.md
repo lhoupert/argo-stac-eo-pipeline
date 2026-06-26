@@ -1,6 +1,6 @@
-# Stage 00 — Cron (Rung 0): the honestly-fragile baseline
+# Stage 00 — Cron (Rung 0): the fragile baseline
 
-> The starting point everyone recognises: a script on a laptop, run by `cron`.
+> A familiar starting point: a script on a laptop, run by `cron`.
 
 _Ladder: rung 0 of 5 — you are here._
 

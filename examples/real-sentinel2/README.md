@@ -1,4 +1,4 @@
-# Example — real Sentinel-2 (the "…and here it is on real data" moment)
+# Example — real Sentinel-2
 
 > The whole ladder runs on a deterministic **synthetic** world so the demo is offline and
 > reproducible. This example proves the *same* unit of work — unchanged — also ingests **real

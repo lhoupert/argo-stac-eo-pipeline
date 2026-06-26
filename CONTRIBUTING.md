@@ -20,7 +20,7 @@ repo in the [dev container / Codespace](./README.md#dev-container--codespaces), 
 pinned. To validate that container from a terminal (no editor), see
 [`.devcontainer/README.md`](./.devcontainer/README.md).
 
-## The one rule that matters most
+## The core invariant
 
 **The unit of work never changes.** `src/eo_ingest/ingest.py` is byte-frozen from rung 1 (AD-2):
 every rung runs the *same* image; only the orchestration around it grows, and the shared package

@@ -4,7 +4,7 @@ This is the long-form companion to the README's quickstart: a **step-by-step wal
 maturity ladder** on your laptop. Each rung is one command, and for each we say **what you'll
 see**, **how to verify it**, and **the lesson** — the one idea that rung adds.
 
-The teaching device runs through everything: **the unit of work never changes.**
+The one constant throughout is **the unit of work — it never changes.**
 `src/eo_ingest/ingest.py` is byte-frozen from rung 1; every rung runs the *same* image, and only
 the orchestration around it grows. When code seems to "appear" at rung 3, it's the *logbook*
 (`logbook.py`) growing `find_gaps` — never the ingester.
@@ -23,7 +23,7 @@ they spin up a real (tiny) Kubernetes cluster. A fresh `make up` reaches a worki
 
 ## Rung 0 — the cron baseline (no Kubernetes)
 
-The starting point everyone recognises: a script on a laptop, run by `cron`. No cluster, no
+A familiar starting point: a script on a laptop, run by `cron`. No cluster, no
 catalog — deliberately fragile, so the later rungs have something to fix.
 
 ```bash
@@ -38,9 +38,9 @@ registration is skipped.
 **How to verify.** Open the MinIO console at <http://localhost:9001> (user/pass
 `minioadmin`/`minioadmin`) — the asset is there, and *nothing else*.
 
-**The lesson.** There's **nowhere to look at 3 am**: no logbook, no UI, no retry. A transient blip
+In practice, there's **nowhere to look at 3 am**: no logbook, no UI, no retry. A transient blip
 silently loses the day; object storage holds what *succeeded* but nothing records what *should*
-exist. That's the problem rung 1 solves. → details: [`stages/00-cron/`](../stages/00-cron/README.md)
+exist. That's what rung 1 addresses. → details: [`stages/00-cron/`](../stages/00-cron/README.md)
 
 ---
 
@@ -109,7 +109,7 @@ curl -s http://localhost:8081/collections/synthetic-aurora-veil/items | jq '.fea
 > are `s3://…` URIs, which a browser can't fetch directly. The map footprint and item records are
 > the real signal here, not the preview image.
 
-**The lesson.** "Nowhere to look at 3 am" becomes "open the logbook, and the retry already handled
+In other words, "nowhere to look at 3 am" becomes "open the logbook, and the retry already handled
 the blip." Same image, same ingest code — the retry lives in the Argo spec, not the
 code. → details: [`stages/01-argo-retries/`](../stages/01-argo-retries/README.md)
 
@@ -117,7 +117,7 @@ code. → details: [`stages/01-argo-retries/`](../stages/01-argo-retries/README.
 
 ## Rung 2 — fan-out backfill (go fast, politely)
 
-Rung 1 ingested one day. Backfilling a month that way is 30 sequential runs. Rung 2 keeps the exact
+Rung 1 ingested one day; backfilling a month that way would mean 30 sequential runs. Rung 2 keeps the exact
 same `ingest` and fans it out across the window with Argo's `withItems`, capped so "fast" never
 means "rude."
 
@@ -144,14 +144,14 @@ argo submit -n eo --wait stages/02-fanout/workflows/backfill.yaml    # fan-out
 Measured here: **~311 s sequential vs ~50 s fan-out ≈ 6.2×**. (Not 10× — per-pod startup on one
 node erodes the cap; the cap is a *politeness ceiling*, not a throughput guarantee.)
 
-**The lesson.** Parallelism is a property of the *orchestration*, not the code — `ingest.py` has
+Parallelism here is a property of the *orchestration*, not the code — `ingest.py` has
 no batching logic. → details: [`stages/02-fanout/`](../stages/02-fanout/README.md)
 
 ---
 
-## Rung 3 — the logbook repairs itself (the heart of the talk)
+## Rung 3 — the logbook repairs itself
 
-Until now *you* told the pipeline what to do. Here the **logbook** does: it knows what should
+Until rung 3, I had to tell the pipeline what to do. Here the **logbook** does: it knows what should
 exist, finds what's missing (`find_gaps`), and fills exactly that — nothing more. Rung 3 needs
 some holes to close, so seed them first:
 
@@ -179,7 +179,7 @@ argo submit -n eo --watch stages/03-stac-logbook/workflows/repair.yaml \
   -p collection=synthetic-tidal-glass
 ```
 
-**The lesson — two levels of self-correction, both for free:**
+**Two levels of self-correction, both built into the ladder:**
 
 | Level | Failure | Who fixes it | Rung |
 |-------|---------|--------------|------|
@@ -208,7 +208,7 @@ Argo run summary (read from the durable workflow *archive* — "1 attempt failed
 **system-level** gap heatmap with ⬜ flipping to ✅. Repair a collection at rung 3 and re-run this:
 its ⬜ flip to ✅.
 
-**The lesson.** A self-healing pipeline still needs a window onto *what* it healed — the item level
+A self-healing pipeline still needs a window onto *what* it healed — the item level
 corrects itself silently; the system level needs this report to be visible. (No Prometheus/Grafana
 in core: the report is sourced from systems the pipeline already runs — the Argo API and the
 logbook.) → details: [`stages/04-observability/`](../stages/04-observability/README.md)

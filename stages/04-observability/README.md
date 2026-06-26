@@ -23,7 +23,7 @@ argo logs @latest -n eo    # see the rich heatmap in the pod logs
 argo get @latest -n eo -o json | jq -r '.status.nodes[].outputs.parameters[0].value'
 ```
 
-## Two levels, two sources (the distinction this rung teaches)
+## Two levels, two sources
 
 | Level | What it shows | Automatic or surfaced? | Source |
 |-------|----------------|------------------------|--------|
@@ -50,7 +50,7 @@ workflows unchanged.
 
 ## End of the ladder
 
-That's rungs 0 → 4: a fragile cron job became an orchestrated, parallel, **self-correcting**
+Rungs 0 → 4: what started as a fragile cron job is now an orchestrated, parallel, **self-correcting**
 pipeline with a logbook and a window onto its own health — and the unit of work never changed.
 ```
 0 cron → 1 retries+logbook → 2 fan-out → 3 gap-closing → 4 observability
