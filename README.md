@@ -28,8 +28,7 @@ and a *day* that's missing is **detected and refilled** (rung 3).
 
 ## Status
 
-✅ **Rungs 0–4 run end-to-end** on a local `kind` cluster. Polish & release work (full CI,
-real-data example) is in progress.
+✅ **Rungs 0–4 run end-to-end** on a local `kind` cluster. Polish & release work (full CI) is in progress.
 The conference talk + slide deck live in a [separate repository](https://github.com/lhoupert/foss4g2026-talk).
 
 ## Prerequisites
@@ -176,7 +175,4 @@ Questions and "where's my pipeline on the ladder?" chats go in
 ## License & attribution
 
 Code is Apache-2.0 — see [`LICENSE`](./LICENSE). The synthetic imagery is generated (not real
-observations), licensed CC-BY-4.0. The optional real-data example uses **Sentinel-2** via
-[Earth Search](https://earth-search.aws.element84.com/v1); Copernicus Sentinel data are free and
-open under the [Copernicus terms](https://sentinels.copernicus.eu/web/sentinel/terms-conditions) —
-attribute "contains modified Copernicus Sentinel data [year]".
+observations), licensed CC-BY-4.0.
