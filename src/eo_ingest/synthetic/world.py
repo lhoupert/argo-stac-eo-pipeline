@@ -41,7 +41,7 @@ _MISSIONS: tuple[Mission, ...] = (
     Mission(
         collection_id="synthetic-tidal-glass",
         code="TG",
-        region_bbox=(5.0, 53.2, 9.2, 54.2),  # Wadden Sea (NL/DE)
+        region_bbox=(5.0, 52.5, 9.2, 55.0),  # Wadden Sea + North Sea coast (NL/DE)
         grid=(4, 4),
         palette=("#04243B", "#1E6F8E", "#5FC9E8", "#F2FBFF"),  # tidal shallows
         texture="channels",  # horizontal tidal channels
