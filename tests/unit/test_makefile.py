@@ -5,8 +5,7 @@ The Makefile is orchestration glue over `kind`/`kubectl`/`argo`, so its end-to-e
 pin here, offline and without a cluster, is the Makefile's **decision logic**:
 
   * every target the plan promises actually exists;
-  * `demo` refuses to run without a STAGE (no silent no-op);
-  * the not-yet-built `prod` profile is guarded, not silently treated as `core`.
+  * `demo` refuses to run without a STAGE (no silent no-op).
 
 These guards run before any `docker`/`kind`/`kubectl` call, so the tests touch nothing external.
 """
@@ -51,7 +50,7 @@ def test_makefile_exists() -> None:
 def test_target_is_defined(target: str) -> None:
     # `-n` is a dry run: it expands and prints recipes but executes nothing, so no cluster is
     # touched. An undefined target makes `make` fail with "No rule to make target".
-    result = _make("-n", target, "STAGE=01", "PROFILE=core")
+    result = _make("-n", target, "STAGE=01")
     assert "No rule to make target" not in result.stderr, (
         f"target `{target}` is not defined:\n{result.stderr}"
     )
@@ -73,12 +72,3 @@ def test_reset_runs_clean_then_seed() -> None:
     assert result.returncode == 0
     out = result.stdout + result.stderr
     assert "make clean" in out and "make seed" in out
-
-
-@requires_make
-def test_prod_profile_is_guarded() -> None:
-    # The prod profile (T25) does not exist yet; `up` must refuse it, not silently run core.
-    result = _make("up", "PROFILE=prod")
-    assert result.returncode != 0
-    combined = (result.stdout + result.stderr).lower()
-    assert "prod" in combined

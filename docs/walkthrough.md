@@ -232,10 +232,9 @@ use `make down` then `make up`.
 
 ## Rung 5 — where the ladder leads (optional)
 
-Rung 5 isn't a folder — it's the *same workflows* on a production-grade stack (eoAPI, titiler,
-Grafana) via `make up PROFILE=prod`. It's the "here's where this goes" payoff, **not** a
-prerequisite for walking the ladder. The prod profile is still being built (tracked as T25), so
-today `PROFILE=prod` fails loudly rather than pretending to be core.
+Rung 5 isn't a folder — the ladder continues to a production-grade stack (eoAPI, titiler, Grafana).
+It's the "here's where this goes" payoff, **not** a prerequisite for walking the ladder. The design
+lives in `claude_docs/SPEC.md`; it is not part of this demo.
 
 ---
 

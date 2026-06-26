@@ -20,16 +20,16 @@ ingest function is identical throughout; only the orchestration grows.
 | **3** | `03-stac-logbook` | the logbook drives repair (`find_gaps`) | the system detects its own gaps and refills them |
 | **4** | `04-observability` | a daily report (Argo API + gap heatmap) | make the self-healing **visible** |
 
-> rung 5 isn't a folder — it's `make up PROFILE=prod` (eoAPI / titiler / Grafana), "where the
-> ladder leads."
+> rung 5 isn't a folder — the ladder continues to a production-grade stack (eoAPI, titiler,
+> Grafana); the design lives in `claude_docs/SPEC.md`.
 
 **Two levels of self-correction** fall out for free: an *item* that fails is **retried** (rung 1),
 and a *day* that's missing is **detected and refilled** (rung 3).
 
 ## Status
 
-✅ **Rungs 0–4 run end-to-end** on a local `kind` cluster. Polish & release work (full CI, prod
-profile, real-data example) is in progress.
+✅ **Rungs 0–4 run end-to-end** on a local `kind` cluster. Polish & release work (full CI,
+real-data example) is in progress.
 The conference talk + slide deck live in a [separate repository](https://github.com/lhoupert/foss4g2026-talk).
 
 ## Prerequisites
@@ -124,20 +124,15 @@ also pays the one-time image pulls. Specs: **Apple M5, 10-core (4P+6E), 32 GB**.
 numbers, *not* a CI SLA — the **CI-runner budget is measured separately** in the kind-smoke job
 (T23, pending).
 
-## Footprint — core vs. prod
+## Footprint
 
-The **core** profile is the lightest thing that demonstrates each rung; the **prod** profile
-(`make up PROFILE=prod`) swaps in the production-grade stack, running the *same* workflows unchanged.
+The demo runs on **plain digest-pinned manifests**, single-replica, targeting a **4-core / 16 GB
+"average laptop"** (rung 0 runs on a 2-core free tier Codespace). CI-runner timings are measured
+separately from laptop numbers (see the cold/warm budget above).
 
-| | Core (default) | Prod (`PROFILE=prod`) |
-|--|----------------|------------------------|
-| STAC API | bare `stac-fastapi-pgstac` + one Postgres pod | eoAPI (`eoapi-k8s` Helm) |
-| Tiles / coverage | — | titiler-pgstac |
-| Dashboards | the rung-4 markdown report | + Grafana (AGPL) |
-| Install | plain digest-pinned manifests | Helm |
-| Target machine | **4-core / 16 GB "average laptop"** (rung 0 runs on a 2-core free tier) | more |
-
-CI-runner timings are measured separately from laptop numbers (see the cold/warm budget above).
+A production-grade extension would add: **eoAPI** (`eoapi-k8s` Helm) replacing the bare STAC API,
+**titiler-pgstac** for coverage tiles, and **Grafana** (AGPLv3) for an error-rate dashboard. That
+design is in `claude_docs/SPEC.md`; it is not part of this demo.
 
 ## Troubleshooting
 

@@ -2,8 +2,7 @@
 #
 # One command brings up the whole core stack on a kind cluster; one tears it down. Every rung from
 # 1 on runs `make demo STAGE=NN`, which submits that stage's Argo workflow against the SAME
-# ingester image loaded here. Profiles: `core` (this file, fully local) and `prod` (T25, not yet
-# built — guarded below so it fails loudly instead of silently behaving like core).
+# ingester image loaded here.
 #
 #   make up                 # kind + MinIO + STAC API + stac-browser + Argo + bucket
 #   make ui                 # port-forward the Argo UI
@@ -14,8 +13,7 @@
 
 SHELL := /usr/bin/env bash
 
-# --- knobs (override on the command line, e.g. `make up PROFILE=core`) ---------------------------
-PROFILE ?= core
+# --- knobs (override on the command line) --------------------------------------------------------
 CLUSTER ?= eo-ladder
 NS      ?= eo
 IMAGE   ?= eo-ingest:dev
@@ -29,11 +27,11 @@ DATETIME ?= 2024-07-10
 ASSET    ?= thumbnail
 
 .DEFAULT_GOAL := help
-.PHONY: help check up down ui browse status seed demo demo-real clean reset clip stills slides tools-record build rebuild _check-profile _check-stage
+.PHONY: help check up down ui browse status seed demo demo-real clean reset clip stills slides tools-record build rebuild _check-stage
 
 # -------------------------------------------------------------------------------------------------
 help: ## Show this help
-	@echo "argo-stac-eo-pipeline — local ladder (PROFILE=$(PROFILE))"
+	@echo "argo-stac-eo-pipeline — local ladder"
 	@echo
 	@echo "First run:  make check  →  make up  →  make demo STAGE=01  →  make browse / make ui"
 	@echo "Reset:      make clean (keeps the cluster)  ·  make reset (clean + re-seed)  ·  make down"
@@ -46,13 +44,6 @@ check: ## Preflight: are Docker (running) + kind/kubectl/argo/uv installed? Run 
 	@scripts/check_tools.sh
 
 # --- guards (run as prerequisites, before any docker/kind/kubectl work) --------------------------
-_check-profile:
-	@if [ "$(PROFILE)" != "core" ]; then \
-		echo "PROFILE=$(PROFILE) is not available yet — only 'core' is built."; \
-		echo "The 'prod' profile (eoAPI Helm, titiler, Grafana) lands in T25."; \
-		exit 2; \
-	fi
-
 _check-stage:
 	@if [ -z "$(STAGE)" ]; then \
 		echo "STAGE is required, e.g. 'make demo STAGE=01'."; \
@@ -72,7 +63,7 @@ rebuild: ## Force-rebuild the ingester image and reload it into the cluster (aft
 	docker build -t "$(IMAGE)" .
 	kind load docker-image "$(IMAGE)" --name "$(CLUSTER)"
 
-up: _check-profile build ## Bring up the full core stack on kind
+up: build ## Bring up the full core stack on kind
 	@# 1. Cluster (idempotent).
 	@if kind get clusters 2>/dev/null | grep -qx "$(CLUSTER)"; then \
 		echo "kind cluster $(CLUSTER) already exists"; \

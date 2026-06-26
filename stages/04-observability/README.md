@@ -45,7 +45,7 @@ Repair a collection (`make demo STAGE=03 ARGS="-p collection=synthetic-tidal-gla
 
 The report is sourced entirely from the **Argo Workflows API** and the **STAC logbook** — systems
 the pipeline already runs. The core profile stays small and dependency-light; the optional **prod**
-profile (T25) adds Grafana + a titiler coverage map for a richer dashboard, running the *same*
+profile adds Grafana + a titiler coverage map for a richer dashboard, running the *same*
 workflows unchanged.
 
 ## End of the ladder
