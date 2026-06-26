@@ -12,13 +12,13 @@ only the orchestration around it grows.
 Folder number == rung number. Each rung is independently runnable and adds **one** idea — the
 ingest function is identical throughout; only the orchestration grows.
 
-| Rung | Stage | What's new | What it changes |
-|------|-------|-----------|------------|
-| **0** | `00-cron` | a laptop `crontab` → `docker run` (no Kubernetes) | fragile: nowhere to look at 3 am |
-| **1** | `01-argo-retries` | the same image under Argo + a STAC **logbook** | retries turn a lost day into a recovered one; you can finally *look* |
-| **2** | `02-fanout` | capped parallel backfill (`withItems`) | go fast **politely** — measured ~6× here |
-| **3** | `03-stac-logbook` | the logbook drives repair (`find_gaps`) | the system detects its own gaps and refills them |
-| **4** | `04-observability` | a daily report (Argo API + gap heatmap) | make the self-healing **visible** |
+| Rung | Stage | What is it |
+|------|-------|-----------|
+| **0** | `00-cron` | a laptop `crontab` → `docker run` |
+| **1** | `01-argo-retries` | the same image under Argo + a STAC **logbook** |
+| **2** | `02-fanout` | capped parallel backfill (`withItems`)  |
+| **3** | `03-stac-logbook` | the logbook drives repair (`find_gaps`) |
+| **4** | `04-observability` | a daily report (Argo API + gap heatmap) |
 
 > rung 5 isn't a folder — the ladder continues to a production-grade stack (eoAPI, titiler,
 > Grafana); the design lives in `claude_docs/SPEC.md`.
