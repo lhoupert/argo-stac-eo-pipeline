@@ -95,6 +95,7 @@ def build_item(
             "platform": mission.platform,
             "instruments": [mission.instrument],
             "gsd": 20,
+            "synthetic": True,
         },
         "links": [],
         "assets": {

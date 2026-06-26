@@ -71,6 +71,7 @@ spec:
             - {name: SOURCE_TYPE, value: synthetic}
             - {name: COLLECTION, value: synthetic-aurora-veil}
             - {name: STAC_URL, value: http://stac-api}
+            - {name: ASSET_BASE_URL, value: "http://localhost:9100/eo-assets"}
             - {name: S3_ENDPOINT_URL, value: http://minio:9000}
             - {name: S3_BUCKET, value: eo-assets}
             - name: AWS_ACCESS_KEY_ID

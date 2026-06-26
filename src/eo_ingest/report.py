@@ -95,7 +95,8 @@ def fetch_runs(argo_api_url: str, namespace: str, *, last_n: int = 20) -> list[R
     ``last_n``, not a hot path. The live list already carries nodes, so it needs no enrichment.
 
     Never raises: if both sources are unreachable, returns ``[]`` so the report still renders its
-    STAC-sourced half. argo-server serves plain HTTP locally (``--secure=false``); ``verify=False`` is a no-op.
+    STAC-sourced half. argo-server is plain HTTP locally (``--secure=false``); ``verify=False``
+    is intentional.
     """
     base = argo_api_url.rstrip("/")
     sources = (

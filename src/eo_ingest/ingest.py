@@ -54,6 +54,26 @@ def _asset_bytes(s3, bucket: str, item: dict) -> int:
     return total
 
 
+def _rewrite_hrefs(config: Config, item: dict) -> dict:
+    """Rewrite s3:// asset hrefs to browser-fetchable HTTP URLs when ASSET_BASE_URL is set.
+
+    _asset_bytes (called before this) must see the original s3:// hrefs — so the rewrite happens
+    on a copy of the item, just before registration, leaving ingest I/O paths untouched.
+    """
+    if not config.asset_base_url:
+        return item
+    base = config.asset_base_url.rstrip("/")
+    prefix = f"s3://{config.s3_bucket}/"
+    new_assets = {}
+    for name, asset in item["assets"].items():
+        href = asset["href"]
+        if href.startswith(prefix):
+            new_assets[name] = {**asset, "href": f"{base}/{href[len(prefix):]}"}
+        else:
+            new_assets[name] = asset
+    return {**item, "assets": new_assets}
+
+
 def _print_summary(
     config: Config, item: dict, total_bytes: int, register_action: str | None
 ) -> None:
@@ -81,6 +101,7 @@ def ingest_one(config: Config, day: date) -> dict:
     actions = download_item(config, item)
     total_bytes = _asset_bytes(s3, config.s3_bucket, item)
 
+    item = _rewrite_hrefs(config, item)
     register_action = register(config, item) if config.registration_enabled else None
     _print_summary(config, item, total_bytes, register_action)
 

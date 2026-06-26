@@ -124,13 +124,18 @@ ui: ## Port-forward the Argo Workflows UI (http://localhost:2746) and open it
 		  ( command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:2746 ) || true; \
 		wait $$ui_pf
 
-browse: ## Port-forward the STAC API + stac-browser UI (http://localhost:8082)
-	@# stac-browser is a client-side app: SB_catalogUrl points the *browser* at localhost:8081,
-	@# so we forward stac-api there AND the UI to 8082. Background the API forward; cleaned up on exit.
-	@echo "STAC API   -> http://localhost:8081"
-	@echo "stac-browser UI -> http://localhost:8082"
+browse: ## Port-forward the STAC API + MinIO assets + stac-browser UI (http://localhost:8082)
+	@# stac-browser is a client-side app: SB_catalogUrl points the *browser* at localhost:8081.
+	@# MinIO is forwarded to 9100 so browser-fetchable ASSET_BASE_URL=http://localhost:9100/eo-assets
+	@# resolves for thumbnail previews. Both background forwards are cleaned up on exit.
+	@echo "STAC API       -> http://localhost:8081"
+	@echo "MinIO assets   -> http://localhost:9100"
+	@echo "stac-browser   -> http://localhost:8082"
 	@kubectl -n $(NS) port-forward svc/stac-api 8081:80 >/dev/null 2>&1 & \
-		api_pf=$$!; trap 'kill $$api_pf 2>/dev/null' EXIT; \
+		api_pf=$$!; \
+		kubectl -n $(NS) port-forward svc/minio 9100:9000 >/dev/null 2>&1 & \
+		minio_pf=$$!; \
+		trap 'kill $$api_pf $$minio_pf 2>/dev/null' EXIT; \
 		( command -v open >/dev/null 2>&1 && open http://localhost:8082 ) || \
 		  ( command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:8082 ) || true; \
 		kubectl -n $(NS) port-forward svc/stac-browser 8082:80
@@ -172,6 +177,7 @@ demo-real: ## Ingest a REAL Sentinel-2 scene via Earth Search (BBOX/DATETIME/ASS
 		S3_ENDPOINT_URL=http://localhost:9100 S3_BUCKET=eo-assets \
 		AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin \
 		STAC_URL=http://localhost:8081 \
+		ASSET_BASE_URL=http://localhost:9100/eo-assets \
 		sh -c 'uv run python -m eo_ingest.ensure_collection && \
 		       uv run python -m eo_ingest.ingest --day $(DATETIME)'
 
@@ -189,6 +195,7 @@ seed: ## Seed the logbook with two missions + deliberate gaps (T17)
 		S3_ENDPOINT_URL=http://localhost:9100 S3_BUCKET=eo-assets \
 		AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin \
 		STAC_URL=http://localhost:8081 \
+		ASSET_BASE_URL=http://localhost:9100/eo-assets \
 		uv run python scripts/seed_stac.py
 
 clean: ## Reset demo state — delete workflows + clear the logbook + empty the bucket (keeps the cluster)

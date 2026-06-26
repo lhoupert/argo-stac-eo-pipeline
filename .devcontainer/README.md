@@ -1,8 +1,10 @@
 # Dev container
 
 This folder ships the **whole ladder toolchain** — `uv`, `kind`, `kubectl`, `argo`, and
-Docker-in-Docker — pinned to the versions the cluster actually runs. Most people never touch the
-commands below: open the repo in VS Code and **Reopen in Container**, or launch a **GitHub
+Docker-in-Docker — pinned to the versions the cluster actually runs. 
+
+**Most people never touch the
+commands below**, you can just open the repo in VS Code and **Reopen in Container**, or launch a **GitHub
 Codespace**, and everything here is applied automatically. See
 [Dev container / Codespaces](../README.md#dev-container--codespaces) in the README for that path.
 
@@ -15,7 +17,7 @@ less-exercised route.
 - Docker running on the host.
 - Node.js + npm (only to install the Dev Containers CLI).
 
-## Bring it up and exercise the ladder
+## Exercise the ladder from the terminal if you don't want to open VS Code in the devcontainer
 
 Run from the **repo root**:
 

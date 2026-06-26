@@ -117,3 +117,16 @@ def test_bbox_malformed_is_a_clear_error() -> None:
     from eo_ingest.config import ConfigError
     with _pytest.raises(ConfigError, match="BBOX"):
         load_config({"BBOX": "5.0,53.2,5.1"})  # only 3 numbers
+
+
+def test_asset_base_url_unset_defaults_to_none() -> None:
+    assert load_config({}).asset_base_url is None
+
+
+def test_asset_base_url_set_round_trips() -> None:
+    cfg = load_config({"ASSET_BASE_URL": "http://localhost:9100/eo-assets"})
+    assert cfg.asset_base_url == "http://localhost:9100/eo-assets"
+
+
+def test_empty_asset_base_url_is_none() -> None:
+    assert load_config({"ASSET_BASE_URL": ""}).asset_base_url is None

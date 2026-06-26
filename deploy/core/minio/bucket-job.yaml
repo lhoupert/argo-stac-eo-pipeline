@@ -27,4 +27,9 @@ spec:
                 echo "waiting for minio..."; sleep 2
               done
               mc mb --ignore-existing local/eo-assets
+              # demo only: public read so stac-browser (a client-side app) can fetch thumbnails
+              mc anonymous set download local/eo-assets
+              # CORS so stac-browser (localhost:8082) can GET from MinIO (localhost:9100)
+              printf '<CORSConfiguration><CORSRule><AllowedOrigin>*</AllowedOrigin><AllowedMethod>GET</AllowedMethod><AllowedHeader>*</AllowedHeader></CORSRule></CORSConfiguration>' \
+                | mc cors set local/eo-assets -
               mc ls local
