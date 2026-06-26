@@ -39,7 +39,7 @@ the whole point of rung 4: a self-healing pipeline still needs a window onto *wh
 its rung-3 repair, `synthetic-tidal-glass` still at **4 ⬜**, and **1 attempt failed then retried**
 read from the durable archive (it survived workflow GC — that's why the archive exists).
 
-Repair a collection (`make demo STAGE=03 -p collection=…`) and re-run this report: its ⬜ flip to ✅.
+Repair a collection (`make demo STAGE=03 ARGS="-p collection=synthetic-tidal-glass"`) and re-run this report: its ⬜ flip to ✅.
 
 ## Why no Prometheus / Grafana here (core profile)
 

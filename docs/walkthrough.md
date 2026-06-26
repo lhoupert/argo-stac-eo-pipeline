@@ -9,7 +9,7 @@ The teaching device runs through everything: **the unit of work never changes.**
 the orchestration around it grows. When code seems to "appear" at rung 3, it's the *logbook*
 (`logbook.py`) growing `find_gaps` — never the ingester.
 
-![The maturity ladder](slides/ladder.svg)
+![The maturity ladder](https://raw.githubusercontent.com/lhoupert/foss4g2026-talk/main/public/ladder.svg)
 
 > **New here?** Do the [Prerequisites](../README.md#prerequisites) first, then come back. The
 > short version: install Docker + `uv` + `kind` + `kubectl` + `argo` (or use the dev container),

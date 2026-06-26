@@ -86,7 +86,7 @@ up: _check-profile build ## Bring up the full core stack on kind
 	kubectl apply -f $(CORE)/namespace.yaml
 	kubectl apply -f $(CORE)/minio/
 	kubectl apply -f $(CORE)/stac/
-	kubectl apply -n $(NS) -f $(CORE)/argo/install.yaml
+	kubectl apply --server-side -n $(NS) -f $(CORE)/argo/install.yaml
 	kubectl apply -f $(CORE)/argo/rbac.yaml
 	@# Workflow archive on the pgSTAC Postgres (durable run history for the rung-4 report). Both the
 	@# controller and the server read this config at startup, so restart them to pick up persistence.
@@ -154,7 +154,9 @@ status: ## Show cluster health (pods) + the demo URLs at a glance
 	fi
 
 # --- demos --------------------------------------------------------------------------------------
-demo: _check-stage ## Submit a stage's workflow and watch it (STAGE=NN required)
+ARGS ?=  # extra argo submit flags, e.g. ARGS="-p collection=synthetic-tidal-glass"
+
+demo: _check-stage ## Submit a stage's workflow and watch it (STAGE=NN required, ARGS optional)
 	@dir=$$(ls -d stages/$(STAGE)-*/ 2>/dev/null | head -n1); dir=$${dir%/}; \
 	if [ -z "$$dir" ]; then \
 		echo "no stage matching 'stages/$(STAGE)-*' — has it been built yet?"; exit 2; \
@@ -164,7 +166,7 @@ demo: _check-stage ## Submit a stage's workflow and watch it (STAGE=NN required)
 		echo "no workflows in $$wf"; exit 2; \
 	fi; \
 	echo "submitting $$wf"; \
-	for f in $$wf/*.yaml; do argo submit -n $(NS) --watch "$$f"; done
+	for f in $$wf/*.yaml; do argo submit -n $(NS) --watch "$$f" $(ARGS); done
 
 demo-real: ## Ingest a REAL Sentinel-2 scene via Earth Search (BBOX/DATETIME/ASSET overridable)
 	@# The same frozen ingester, SOURCE_TYPE=earthsearch. Runs from the host against the cluster's

@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: stac-api
-          image: ghcr.io/stac-utils/stac-fastapi-pgstac@sha256:5b7e87c347d65a3a2a34673a0834aa3ec81835b49fd0f68147039826baa8165e
+          image: ghcr.io/stac-utils/stac-fastapi-pgstac@sha256:db117b91302f7983ce4e07658768a6e8d2f6716613252a15f5dcdbda8dae9883
           env:
             - name: POSTGRES_USER
               valueFrom:
