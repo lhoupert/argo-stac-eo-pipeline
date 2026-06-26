@@ -17,7 +17,8 @@ uv run pytest tests/unit     # fast offline tests (no cluster needed)
 
 To run the cluster rungs you also need Docker, `kind`, `kubectl`, and `argo` — or just open the
 repo in the [dev container / Codespace](./README.md#dev-container--codespaces), which ships them
-pinned.
+pinned. To validate that container from a terminal (no editor), see
+[`.devcontainer/README.md`](./.devcontainer/README.md).
 
 ## The one rule that matters most
 
