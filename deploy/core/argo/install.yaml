@@ -2989,6 +2989,10 @@ spec:
         # Local-demo auth: the UI uses the argo-server SA, so no login/token is needed behind a
         # port-forward. NOT for any shared/exposed deployment — see README before changing.
         - --auth-mode=server
+        # Local-demo TLS: serve the UI over plain HTTP behind the port-forward, so there is no
+        # self-signed-cert warning (and VS Code forwards it cleanly). The in-cluster report client
+        # (ARGO_API_URL) matches this. NOT for any shared/exposed deployment — see README.
+        - --secure=false
         env: []
         image: quay.io/argoproj/argocli@sha256:2badfcd4136a1a6583904943c8e8883062c47380047c57b73845b5610cd3e96f
         name: argo-server
@@ -2999,7 +3003,7 @@ spec:
           httpGet:
             path: /
             port: 2746
-            scheme: HTTPS
+            scheme: HTTP  # matches --secure=false (argo-server serves plain HTTP locally)
           initialDelaySeconds: 10
           periodSeconds: 20
         securityContext:

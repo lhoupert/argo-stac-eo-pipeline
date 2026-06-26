@@ -38,11 +38,12 @@ ServiceAccount, so there's **no login or token** behind a port-forward. This is 
 
 ## Open the UI
 
-The server serves **HTTPS** with a self-signed cert:
+The server runs with `--secure=false`, so it serves **plain HTTP** (no cert warning) behind the
+local port-forward:
 
 ```sh
 kubectl -n eo port-forward svc/argo-server 2746:2746
-# then open https://localhost:2746  (accept the self-signed-cert warning)
+# then open http://localhost:2746  (no login — auth-mode=server)
 ```
 
 ## Least-privilege RBAC

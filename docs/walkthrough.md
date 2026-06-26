@@ -71,7 +71,7 @@ its terminal with a port-forward, so keep a couple of tabs open and run the `mak
 a **second** terminal:
 
 ```bash
-make ui       # opens the Argo UI; accept the self-signed-cert warning, then leave it running
+make ui       # opens the Argo UI (plain HTTP, no login); leave it running
 ```
 
 ---
@@ -247,9 +247,29 @@ make down    # delete the kind cluster (idempotent)
 
 ---
 
-## When something looks wrong
+## Observe the cluster (and when something looks wrong)
+
+`make status` and `make check` are the two fastest "what's going on?" probes. To look closer, run
+these wherever you brought the cluster up — your host, or the dev container — against the
+`kind-eo-ladder` context:
+
+```bash
+make status                         # pods + the demo URLs at a glance
+kubectl -n eo get pods              # raw pod status (Running / Completed / Error)
+kubectl -n eo get all              # pods, services, deployments together
+kubectl -n eo logs deploy/stac-api  # a component's logs (swap in pgstac, minio, …)
+kubectl -n eo describe pod <name>   # why a pod is Pending / CrashLooping
+kubectl -n eo get events --sort-by=.lastTimestamp   # recent cluster events
+
+argo list -n eo                     # every workflow run + its status
+argo get  -n eo @latest             # the step tree of the last run (the ✖→✔ retry view)
+argo logs -n eo @latest             # that run's pod logs
+```
+
+The two web UIs need a port-forward, which the Makefile wraps: `make ui` (Argo Workflows,
+http://localhost:2746) and `make browse` (STAC API + stac-browser). In a dev container, run these
+in the editor-attached terminal so the port is forwarded to your host browser.
 
 The README's [Troubleshooting table](../README.md#troubleshooting) covers the usual suspects —
 stale in-cluster image (`make rebuild`), an ambient `S3_*` env leaking into a host script, blank
-previews (FU-2), slow first `make up`, and the Windows/WSL2 note. `make status` and
-`make check` are the two fastest "what's wrong?" probes.
+previews (FU-2), slow first `make up`, and the Windows/WSL2 note.

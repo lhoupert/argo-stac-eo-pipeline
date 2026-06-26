@@ -24,7 +24,7 @@ from eo_ingest.report import (
 
 START = date(2026, 3, 1)
 END = date(2026, 3, 14)
-ARGO = "https://argo-server:2746"
+ARGO = "http://argo-server:2746"
 NS = "eo"
 
 

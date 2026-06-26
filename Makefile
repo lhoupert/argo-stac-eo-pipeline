@@ -112,16 +112,16 @@ down: ## Delete the kind cluster (idempotent)
 	fi
 
 # --- access ---------------------------------------------------------------------------------------
-ui: ## Port-forward the Argo Workflows UI (https://localhost:2746) and open it
-	@echo "Argo UI -> https://localhost:2746  (self-signed cert; auth-mode=server, no token)"
+ui: ## Port-forward the Argo Workflows UI (http://localhost:2746) and open it
+	@echo "Argo UI -> http://localhost:2746  (auth-mode=server, no token)"
 	@# Same UX as `browse`: open the UI in the browser, then hold the port-forward in the
 	@# foreground (Ctrl-C to stop). We background the forward, give it a moment to bind, open the
 	@# URL, then `wait` so the target stays attached and the trap cleans the forward up on exit.
-	@# The UI is HTTPS with a self-signed cert, so the browser shows a one-time warning — accept it.
+	@# argo-server runs with --secure=false (plain HTTP), so there is no cert warning to accept.
 	@kubectl -n $(NS) port-forward svc/argo-server 2746:2746 >/dev/null 2>&1 & \
 		ui_pf=$$!; trap 'kill $$ui_pf 2>/dev/null' EXIT; sleep 2; \
-		( command -v open >/dev/null 2>&1 && open https://localhost:2746 ) || \
-		  ( command -v xdg-open >/dev/null 2>&1 && xdg-open https://localhost:2746 ) || true; \
+		( command -v open >/dev/null 2>&1 && open http://localhost:2746 ) || \
+		  ( command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:2746 ) || true; \
 		wait $$ui_pf
 
 browse: ## Port-forward the STAC API + stac-browser UI (http://localhost:8082)
@@ -143,7 +143,7 @@ status: ## Show cluster health (pods) + the demo URLs at a glance
 		kubectl -n $(NS) get pods; \
 		echo; \
 		echo "URLs (each needs its port-forward — the command in parentheses):"; \
-		echo "  Argo UI        https://localhost:2746   (make ui)"; \
+		echo "  Argo UI        http://localhost:2746    (make ui)"; \
 		echo "  STAC API       http://localhost:8081     (make browse)"; \
 		echo "  stac-browser   http://localhost:8082     (make browse)"; \
 	fi

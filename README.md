@@ -74,7 +74,7 @@ Then **open the Argo UI first**, so you watch the pipeline execute, and submit t
 second terminal — `make ui` and `make browse` each stay running (they hold a port-forward):
 
 ```bash
-make ui                 # terminal 1 — opens the Argo UI; leave it running (accept the cert warning)
+make ui                 # terminal 1 — opens the Argo UI (plain HTTP, no login); leave it running
 make demo STAGE=01      # terminal 2 — submit rung 1; watch ingest(0)✖ → ingest(1)✔ live in the UI
 make browse             # then — open stac-browser, the item is now in the logbook
 ```
