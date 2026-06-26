@@ -1,0 +1,35 @@
+# Argo workflow archive — durable run history on the EXISTING pgSTAC Postgres (T21).
+#
+# Without this, the controller garbage-collects completed Workflows and the daily report loses the
+# item-level self-correction story (the failed-then-retried runs vanish). Pointing Argo's archive
+# at the pgstac Postgres keeps that history with no extra database: one server, one database
+# (pgstac), two schemas — pgSTAC's data lives in the `pgstac` schema, Argo creates its archive
+# tables in `public`. The report degrades to "last N live" workflows whenever this is absent/down.
+#
+# The vendored install.yaml ships an EMPTY workflow-controller-configmap, so this full replacement
+# is the clean override (applied after install.yaml by `make up`). Reuses the pgstac-credentials
+# secret — the superuser Argo needs to auto-create/migrate its archive tables on first start.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: workflow-controller-configmap
+  namespace: eo
+  labels:
+    app: argo
+data:
+  config: |
+    persistence:
+      archive: true
+      # Keep the archive bounded so the demo DB doesn't grow without limit.
+      archiveTTL: 7d
+      postgresql:
+        host: pgstac
+        port: 5432
+        database: pgstac
+        tableName: argo_workflows
+        userNameSecret:
+          name: pgstac-credentials
+          key: POSTGRES_USER
+        passwordSecret:
+          name: pgstac-credentials
+          key: POSTGRES_PASSWORD

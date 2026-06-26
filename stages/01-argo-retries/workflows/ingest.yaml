@@ -1,0 +1,78 @@
+# Rung 1 — the SAME image (the frozen unit of work), now under Argo Workflows.
+#
+# Two things change versus rung 0, and only the orchestration moves:
+#   1. RETRIES   — the ingest step has a retryStrategy, so the FAIL_ONCE transient failure that
+#                  silently lost a day at rung 0 now fails once and SUCCEEDS on the retry. Argo
+#                  schedules the retry in a fresh pod; the S3 fail-marker survives, so attempt 2
+#                  sees it and proceeds.
+#   2. A LOGBOOK — STAC_URL is set, so each item is registered into the STAC API. ensure-collection
+#                  runs first so the collection exists before the item is POSTed under it.
+#
+# `make demo STAGE=01` submits and watches this. Same container image as every other rung
+# (eo-ingest:dev, loaded into kind by `make up`), driven purely by env vars (AD-1). env is listed
+# in full per step on purpose: Argo's templateDefaults merges arrays by *replacement*, not append,
+# so sharing env there would silently drop the connection vars from the step that adds FAIL_ONCE.
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: rung1-ingest-
+  namespace: eo
+  labels:
+    app: eo-ladder
+    rung: "1"
+spec:
+  serviceAccountName: argo-workflow          # least-privilege SA (deploy/core/argo/rbac.yaml)
+  entrypoint: main
+  # Safe-to-merge defaults (scalars/maps): use the kind-loaded image, modest resources.
+  templateDefaults:
+    container:
+      imagePullPolicy: IfNotPresent
+      resources:
+        requests: {cpu: 100m, memory: 128Mi}
+        limits: {memory: 256Mi}
+  templates:
+    - name: main
+      dag:
+        tasks:
+          - name: ensure-collection
+            template: ensure-collection
+          - name: ingest
+            template: ingest
+            dependencies: [ensure-collection]
+
+    # Create the collection if absent (idempotent) so register() has somewhere to POST items.
+    - name: ensure-collection
+      container:
+        image: eo-ingest:dev
+        command: ["python", "-m", "eo_ingest.ensure_collection"]
+        env:
+          - {name: SOURCE_TYPE, value: synthetic}
+          - {name: COLLECTION, value: synthetic-aurora-veil}
+          - {name: STAC_URL, value: http://stac-api}
+          - {name: S3_ENDPOINT_URL, value: http://minio:9000}
+          - {name: S3_BUCKET, value: eo-assets}
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom: {secretKeyRef: {name: minio-credentials, key: MINIO_ROOT_USER}}
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom: {secretKeyRef: {name: minio-credentials, key: MINIO_ROOT_PASSWORD}}
+
+    # Ingest one day. FAIL_ONCE injects a single transient failure; retryStrategy turns that into a
+    # fail-then-succeed instead of a lost day — the whole point of the rung.
+    - name: ingest
+      retryStrategy:
+        limit: "2"
+        retryPolicy: Always
+      container:
+        image: eo-ingest:dev
+        command: ["python", "-m", "eo_ingest.ingest"]
+        env:
+          - {name: FAIL_ONCE, value: "1"}
+          - {name: SOURCE_TYPE, value: synthetic}
+          - {name: COLLECTION, value: synthetic-aurora-veil}
+          - {name: STAC_URL, value: http://stac-api}
+          - {name: S3_ENDPOINT_URL, value: http://minio:9000}
+          - {name: S3_BUCKET, value: eo-assets}
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom: {secretKeyRef: {name: minio-credentials, key: MINIO_ROOT_USER}}
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom: {secretKeyRef: {name: minio-credentials, key: MINIO_ROOT_PASSWORD}}

@@ -1,0 +1,27 @@
+{
+  "name": "eo-ladder",
+  "build": { "dockerfile": "Dockerfile" },
+
+  // Docker-in-Docker so kind can create its cluster *inside* the dev container — this is what makes
+  // "reopen in container" able to run rungs 1–4, not just rung 0.
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+
+  // Install the project (and dev tools) once the container is up.
+  "postCreateCommand": "uv sync",
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["charliermarsh.ruff", "ms-python.python", "redhat.vscode-yaml"],
+      "settings": {
+        "python.defaultInterpreterPath": "/workspaces/2026_foss4geurope/.venv/bin/python"
+      }
+    }
+  },
+
+  // kind needs a few extra capabilities; the cluster's API server is reachable on the host network.
+  "runArgs": ["--init"],
+
+  "remoteUser": "vscode"
+}

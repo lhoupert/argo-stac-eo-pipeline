@@ -1,0 +1,79 @@
+# Rung 1, the scheduled form — THIS is the 0 -> 1 delta made literal.
+#
+# Rung 0 was one crontab line:  `0 3 * * *  run.sh`  (stages/00-cron/crontab) — fragile, on a
+# laptop, with nowhere to look when it failed. This CronWorkflow is the SAME `0 3 * * *` schedule,
+# now run by Argo in the cluster: retries when a run fails, a UI/history to watch it, and a STAC
+# logbook that records what landed.
+#
+# The per-run logic is identical to workflows/ingest.yaml (run once on demand by `make demo`);
+# it is duplicated here rather than shared via a WorkflowTemplate so each artifact reads as one
+# self-contained, copyable file. Apply the schedule with:
+#   kubectl apply -f stages/01-argo-retries/cronworkflow.yaml
+#   argo cron list -n eo                       # see it scheduled
+#   argo submit -n eo --from cronwf/rung1-ingest --watch   # trigger one run now
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  name: rung1-ingest
+  namespace: eo
+  labels:
+    app: eo-ladder
+    rung: "1"
+spec:
+  schedule: "0 3 * * *"            # 03:00 daily — the same time the rung-0 crontab fired
+  concurrencyPolicy: Forbid       # never overlap runs
+  startingDeadlineSeconds: 120
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  workflowSpec:
+    serviceAccountName: argo-workflow
+    entrypoint: main
+    templateDefaults:
+      container:
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests: {cpu: 100m, memory: 128Mi}
+          limits: {memory: 256Mi}
+    templates:
+      - name: main
+        dag:
+          tasks:
+            - name: ensure-collection
+              template: ensure-collection
+            - name: ingest
+              template: ingest
+              dependencies: [ensure-collection]
+
+      - name: ensure-collection
+        container:
+          image: eo-ingest:dev
+          command: ["python", "-m", "eo_ingest.ensure_collection"]
+          env:
+            - {name: SOURCE_TYPE, value: synthetic}
+            - {name: COLLECTION, value: synthetic-aurora-veil}
+            - {name: STAC_URL, value: http://stac-api}
+            - {name: S3_ENDPOINT_URL, value: http://minio:9000}
+            - {name: S3_BUCKET, value: eo-assets}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom: {secretKeyRef: {name: minio-credentials, key: MINIO_ROOT_USER}}
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom: {secretKeyRef: {name: minio-credentials, key: MINIO_ROOT_PASSWORD}}
+
+      - name: ingest
+        retryStrategy:
+          limit: "2"
+          retryPolicy: Always
+        container:
+          image: eo-ingest:dev
+          command: ["python", "-m", "eo_ingest.ingest"]
+          env:
+            - {name: FAIL_ONCE, value: "1"}
+            - {name: SOURCE_TYPE, value: synthetic}
+            - {name: COLLECTION, value: synthetic-aurora-veil}
+            - {name: STAC_URL, value: http://stac-api}
+            - {name: S3_ENDPOINT_URL, value: http://minio:9000}
+            - {name: S3_BUCKET, value: eo-assets}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom: {secretKeyRef: {name: minio-credentials, key: MINIO_ROOT_USER}}
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom: {secretKeyRef: {name: minio-credentials, key: MINIO_ROOT_PASSWORD}}

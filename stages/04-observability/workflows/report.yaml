@@ -1,0 +1,40 @@
+# Rung 4 — observability. Run the SAME image one more way: render the daily report in-cluster.
+#
+# Nothing about the pipeline changes; this just makes the two levels of self-correction *visible*:
+#   - ITEM level (automatic): Argo retried a failed step — surfaced from the workflow archive.
+#   - SYSTEM level (surfaced): the logbook had gaps and rung 3 refilled them — the ⬜ → ✅ heatmap.
+#
+# The rich heatmap goes to the pod logs (`argo logs`); the markdown is captured as an output
+# parameter so it's retrievable from the finished workflow without an artifact repository.
+# `make demo STAGE=04` submits and watches this.
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: rung4-report-
+  namespace: eo
+  labels:
+    app: eo-ladder
+    rung: "4"
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: report
+  templates:
+    - name: report
+      container:
+        image: eo-ingest:dev
+        imagePullPolicy: IfNotPresent
+        command: ["python", "-m", "eo_ingest.report", "--out", "/tmp/report.md"]
+        env:
+          - {name: SOURCE_TYPE, value: synthetic}
+          - {name: STAC_URL, value: http://stac-api}
+          # The report reads run history from the Argo API (self-signed TLS; the client skips
+          # verification). auth-mode=server means no token is needed in-cluster.
+          - {name: ARGO_API_URL, value: https://argo-server:2746}
+        resources:
+          requests: {cpu: 100m, memory: 128Mi}
+          limits: {memory: 256Mi}
+      outputs:
+        parameters:
+          - name: report
+            valueFrom:
+              path: /tmp/report.md

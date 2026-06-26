@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  # Scheduled drift run: the manifests pin upstream images by digest, so a weekly cluster smoke
+  # catches the day an upstream behaviour changes under us (or a digest is yanked).
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC
+
+# Cancel superseded runs on the same ref to save runner minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-test:
+    name: lint + unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        # --locked fails the run if uv.lock has drifted from pyproject.toml, so CI tests exactly
+        # the pinned versions the image ships (Dockerfile installs the same lock with --frozen).
+        run: uv sync --locked
+
+      - name: Ruff
+        run: uv run ruff check .
+
+      - name: Shared-logic invariant (one image, no vendored logic, ingest.py frozen)
+        run: uv run python scripts/check_shared_logic.py
+
+      - name: Unit tests + coverage gate (>=85%)
+        run: uv run pytest tests/unit --cov=eo_ingest --cov-report=term-missing --cov-fail-under=85
+
+  workflows-lint:
+    name: argo lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install argo CLI
+        run: |
+          curl -fsSL https://github.com/argoproj/argo-workflows/releases/download/v3.7.4/argo-linux-amd64.gz \
+            | gunzip > /usr/local/bin/argo && chmod +x /usr/local/bin/argo
+      - name: Lint every stage workflow (offline)
+        run: |
+          shopt -s globstar nullglob
+          for f in stages/**/*.yaml; do echo "== $f =="; argo lint --offline "$f"; done
+
+  image:
+    name: image (multi-arch build + scan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build amd64 + arm64 (digest-pinned base, no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: false
+          load: false
+          tags: eo-ingest:ci
+
+      # Scan a single-arch load of the image for known CVEs.
+      - name: Build amd64 for scan
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: eo-ingest:scan
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: eo-ingest:scan
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+  devcontainer:
+    name: devcontainer build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the dev container image
+        run: docker build -t eo-ladder-devcontainer:ci -f .devcontainer/Dockerfile .devcontainer
+
+  kind-smoke:
+    name: kind smoke (cold/warm budget) + drift
+    runs-on: ubuntu-latest
+    # Heavy: only on PRs, pushes to main, and the scheduled drift run — not every branch push.
+    if: github.event_name == 'pull_request' || github.event_name == 'schedule' || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Install kind + kubectl + argo
+        run: |
+          set -eux
+          curl -fsSLo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.32.0/kind-linux-amd64
+          curl -fsSLo /usr/local/bin/kubectl https://dl.k8s.io/release/v1.34.1/bin/linux/amd64/kubectl
+          curl -fsSL https://github.com/argoproj/argo-workflows/releases/download/v3.7.4/argo-linux-amd64.gz \
+            | gunzip > /usr/local/bin/argo
+          chmod +x /usr/local/bin/kind /usr/local/bin/kubectl /usr/local/bin/argo
+      - name: Sync deps
+        run: uv sync --locked
+      - name: Timed cold smoke (make down -> up -> demo STAGE=01, asserts the budget)
+        env:
+          RUN_CLUSTER_SMOKE: "1"
+        run: uv run pytest tests/integration/test_smoke_stage01.py -s -v
+      - name: Tear down
+        if: always()
+        run: make down

@@ -1,0 +1,62 @@
+# stac-browser — the visual catalog UI. It's a CLIENT-SIDE app: the browser (not the cluster)
+# fetches the STAC API, so SB_catalogUrl must be an address the *browser* can reach. `make browse`
+# port-forwards stac-api to localhost:8081, so that's what we point at.
+#
+# NOTE (arch): radiantearth/stac-browser publishes amd64 only — no arm64 manifest. On an arm64
+# kind node it relies on the Docker host's binfmt/qemu emulation. The STAC API itself is multi-arch;
+# this UI is the one arch gap. Tracked as a follow-up (build a multi-arch image or vendor one).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stac-browser
+  namespace: eo
+  labels:
+    app: stac-browser
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stac-browser
+  template:
+    metadata:
+      labels:
+        app: stac-browser
+    spec:
+      containers:
+        - name: stac-browser
+          image: ghcr.io/radiantearth/stac-browser@sha256:d953c6c0837f919e461bf7d6f1c6d2c6ce4f043629c39478c9c615cd491f1eea
+          env:
+            - name: SB_catalogUrl
+              value: "http://localhost:8081"
+            - name: SB_catalogTitle
+              value: "EO Logbook (synthetic)"
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stac-browser
+  namespace: eo
+  labels:
+    app: stac-browser
+spec:
+  selector:
+    app: stac-browser
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

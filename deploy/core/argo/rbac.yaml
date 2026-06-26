@@ -1,0 +1,42 @@
+# Least-privilege identity for WORKFLOW PODS (not the controller/server — those have their own SAs
+# in install.yaml). Every Workflow/CronWorkflow in this repo runs as `argo-workflow`.
+#
+# The only cluster permission a workflow pod needs is to report its own step results back to the
+# controller: create/patch `workflowtaskresults` (the Emissary executor does this). That's it — no
+# pod creation, no secret access, emphatically NOT cluster-admin. The README shows the
+# `kubectl auth can-i` check that proves the boundary.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argo-workflow
+  namespace: eo
+  labels:
+    app: argo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argo-workflow
+  namespace: eo
+  labels:
+    app: argo
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["workflowtaskresults"]
+    verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argo-workflow
+  namespace: eo
+  labels:
+    app: argo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argo-workflow
+subjects:
+  - kind: ServiceAccount
+    name: argo-workflow
+    namespace: eo
