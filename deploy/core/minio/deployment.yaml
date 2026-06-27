@@ -22,6 +22,12 @@ spec:
         - name: minio
           image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
           args: ["server", "/data", "--console-address", ":9001"]
+          env:
+            # Server-wide wildcard CORS so stac-browser (localhost:8082) can GET thumbnails
+            # from MinIO (localhost:9100). Replaces per-bucket `mc cors set` which broke when
+            # mc/minio versions diverged (mc sends a checksum header the CORS endpoint rejects).
+            - name: MINIO_API_CORS_ALLOW_ORIGIN
+              value: "*"
           envFrom:
             - secretRef:
                 name: minio-credentials

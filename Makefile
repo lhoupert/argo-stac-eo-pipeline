@@ -2,8 +2,7 @@
 #
 # One command brings up the whole core stack on a kind cluster; one tears it down. Every rung from
 # 1 on runs `make demo STAGE=NN`, which submits that stage's Argo workflow against the SAME
-# ingester image loaded here. Profiles: `core` (this file, fully local) and `prod` (T25, not yet
-# built — guarded below so it fails loudly instead of silently behaving like core).
+# ingester image loaded here.
 #
 #   make up                 # kind + MinIO + STAC API + stac-browser + Argo + bucket
 #   make ui                 # port-forward the Argo UI
@@ -14,8 +13,7 @@
 
 SHELL := /usr/bin/env bash
 
-# --- knobs (override on the command line, e.g. `make up PROFILE=core`) ---------------------------
-PROFILE ?= core
+# --- knobs (override on the command line) --------------------------------------------------------
 CLUSTER ?= eo-ladder
 NS      ?= eo
 IMAGE   ?= eo-ingest:dev
@@ -23,17 +21,13 @@ IMAGE   ?= eo-ingest:dev
 KIND_CONFIG := deploy/kind-cluster.yaml
 CORE        := deploy/core
 
-# Real-data example knobs (examples/real-sentinel2). Small Wadden Sea bbox + a clear-sky day.
-BBOX     ?= 6.50,53.50,6.55,53.55
-DATETIME ?= 2024-07-10
-ASSET    ?= thumbnail
 
 .DEFAULT_GOAL := help
-.PHONY: help check up down ui browse status seed demo demo-real clean reset clip stills slides tools-record build rebuild _check-profile _check-stage
+.PHONY: help check up down ui browse status seed demo clean reset clip stills slides tools-record build rebuild _check-stage
 
 # -------------------------------------------------------------------------------------------------
 help: ## Show this help
-	@echo "argo-stac-eo-pipeline — local ladder (PROFILE=$(PROFILE))"
+	@echo "argo-stac-eo-pipeline — local ladder"
 	@echo
 	@echo "First run:  make check  →  make up  →  make demo STAGE=01  →  make browse / make ui"
 	@echo "Reset:      make clean (keeps the cluster)  ·  make reset (clean + re-seed)  ·  make down"
@@ -46,13 +40,6 @@ check: ## Preflight: are Docker (running) + kind/kubectl/argo/uv installed? Run 
 	@scripts/check_tools.sh
 
 # --- guards (run as prerequisites, before any docker/kind/kubectl work) --------------------------
-_check-profile:
-	@if [ "$(PROFILE)" != "core" ]; then \
-		echo "PROFILE=$(PROFILE) is not available yet — only 'core' is built."; \
-		echo "The 'prod' profile (eoAPI Helm, titiler, Grafana) lands in T25."; \
-		exit 2; \
-	fi
-
 _check-stage:
 	@if [ -z "$(STAGE)" ]; then \
 		echo "STAGE is required, e.g. 'make demo STAGE=01'."; \
@@ -72,7 +59,7 @@ rebuild: ## Force-rebuild the ingester image and reload it into the cluster (aft
 	docker build -t "$(IMAGE)" .
 	kind load docker-image "$(IMAGE)" --name "$(CLUSTER)"
 
-up: _check-profile build ## Bring up the full core stack on kind
+up: build ## Bring up the full core stack on kind
 	@# 1. Cluster (idempotent).
 	@if kind get clusters 2>/dev/null | grep -qx "$(CLUSTER)"; then \
 		echo "kind cluster $(CLUSTER) already exists"; \
@@ -86,7 +73,7 @@ up: _check-profile build ## Bring up the full core stack on kind
 	kubectl apply -f $(CORE)/namespace.yaml
 	kubectl apply -f $(CORE)/minio/
 	kubectl apply -f $(CORE)/stac/
-	kubectl apply -n $(NS) -f $(CORE)/argo/install.yaml
+	kubectl apply --server-side -n $(NS) -f $(CORE)/argo/install.yaml
 	kubectl apply -f $(CORE)/argo/rbac.yaml
 	@# Workflow archive on the pgSTAC Postgres (durable run history for the rung-4 report). Both the
 	@# controller and the server read this config at startup, so restart them to pick up persistence.
@@ -112,25 +99,30 @@ down: ## Delete the kind cluster (idempotent)
 	fi
 
 # --- access ---------------------------------------------------------------------------------------
-ui: ## Port-forward the Argo Workflows UI (https://localhost:2746) and open it
-	@echo "Argo UI -> https://localhost:2746  (self-signed cert; auth-mode=server, no token)"
+ui: ## Port-forward the Argo Workflows UI (http://localhost:2746) and open it
+	@echo "Argo UI -> http://localhost:2746  (auth-mode=server, no token)"
 	@# Same UX as `browse`: open the UI in the browser, then hold the port-forward in the
 	@# foreground (Ctrl-C to stop). We background the forward, give it a moment to bind, open the
 	@# URL, then `wait` so the target stays attached and the trap cleans the forward up on exit.
-	@# The UI is HTTPS with a self-signed cert, so the browser shows a one-time warning — accept it.
+	@# argo-server runs with --secure=false (plain HTTP), so there is no cert warning to accept.
 	@kubectl -n $(NS) port-forward svc/argo-server 2746:2746 >/dev/null 2>&1 & \
 		ui_pf=$$!; trap 'kill $$ui_pf 2>/dev/null' EXIT; sleep 2; \
-		( command -v open >/dev/null 2>&1 && open https://localhost:2746 ) || \
-		  ( command -v xdg-open >/dev/null 2>&1 && xdg-open https://localhost:2746 ) || true; \
+		( command -v open >/dev/null 2>&1 && open http://localhost:2746 ) || \
+		  ( command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:2746 ) || true; \
 		wait $$ui_pf
 
-browse: ## Port-forward the STAC API + stac-browser UI (http://localhost:8082)
-	@# stac-browser is a client-side app: SB_catalogUrl points the *browser* at localhost:8081,
-	@# so we forward stac-api there AND the UI to 8082. Background the API forward; cleaned up on exit.
-	@echo "STAC API   -> http://localhost:8081"
-	@echo "stac-browser UI -> http://localhost:8082"
+browse: ## Port-forward the STAC API + MinIO assets + stac-browser UI (http://localhost:8082)
+	@# stac-browser is a client-side app: SB_catalogUrl points the *browser* at localhost:8081.
+	@# MinIO is forwarded to 9100 so browser-fetchable ASSET_BASE_URL=http://localhost:9100/eo-assets
+	@# resolves for thumbnail previews. Both background forwards are cleaned up on exit.
+	@echo "STAC API       -> http://localhost:8081"
+	@echo "MinIO assets   -> http://localhost:9100"
+	@echo "stac-browser   -> http://localhost:8082"
 	@kubectl -n $(NS) port-forward svc/stac-api 8081:80 >/dev/null 2>&1 & \
-		api_pf=$$!; trap 'kill $$api_pf 2>/dev/null' EXIT; \
+		api_pf=$$!; \
+		kubectl -n $(NS) port-forward svc/minio 9100:9000 >/dev/null 2>&1 & \
+		minio_pf=$$!; \
+		trap 'kill $$api_pf $$minio_pf 2>/dev/null' EXIT; \
 		( command -v open >/dev/null 2>&1 && open http://localhost:8082 ) || \
 		  ( command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:8082 ) || true; \
 		kubectl -n $(NS) port-forward svc/stac-browser 8082:80
@@ -143,13 +135,15 @@ status: ## Show cluster health (pods) + the demo URLs at a glance
 		kubectl -n $(NS) get pods; \
 		echo; \
 		echo "URLs (each needs its port-forward — the command in parentheses):"; \
-		echo "  Argo UI        https://localhost:2746   (make ui)"; \
+		echo "  Argo UI        http://localhost:2746    (make ui)"; \
 		echo "  STAC API       http://localhost:8081     (make browse)"; \
 		echo "  stac-browser   http://localhost:8082     (make browse)"; \
 	fi
 
 # --- demos --------------------------------------------------------------------------------------
-demo: _check-stage ## Submit a stage's workflow and watch it (STAGE=NN required)
+ARGS ?=  # extra argo submit flags, e.g. ARGS="-p collection=synthetic-tidal-glass"
+
+demo: _check-stage ## Submit a stage's workflow and watch it (STAGE=NN required, ARGS optional)
 	@dir=$$(ls -d stages/$(STAGE)-*/ 2>/dev/null | head -n1); dir=$${dir%/}; \
 	if [ -z "$$dir" ]; then \
 		echo "no stage matching 'stages/$(STAGE)-*' — has it been built yet?"; exit 2; \
@@ -159,21 +153,8 @@ demo: _check-stage ## Submit a stage's workflow and watch it (STAGE=NN required)
 		echo "no workflows in $$wf"; exit 2; \
 	fi; \
 	echo "submitting $$wf"; \
-	for f in $$wf/*.yaml; do argo submit -n $(NS) --watch "$$f"; done
+	for f in $$wf/*.yaml; do argo submit -n $(NS) --watch "$$f" $(ARGS); done
 
-demo-real: ## Ingest a REAL Sentinel-2 scene via Earth Search (BBOX/DATETIME/ASSET overridable)
-	@# The same frozen ingester, SOURCE_TYPE=earthsearch. Runs from the host against the cluster's
-	@# MinIO + STAC (port-forwarded); env is pinned so an ambient cloud profile can't leak in.
-	@echo "ingesting REAL Sentinel-2 (bbox=$(BBOX) day=$(DATETIME) asset=$(ASSET)) — needs network"
-	@kubectl -n $(NS) port-forward svc/minio 9100:9000 >/dev/null 2>&1 & m=$$!; \
-		kubectl -n $(NS) port-forward svc/stac-api 8081:80 >/dev/null 2>&1 & s=$$!; \
-		trap 'kill $$m $$s 2>/dev/null' EXIT; sleep 3; \
-		SOURCE_TYPE=earthsearch COLLECTION=sentinel-2-l2a ASSET=$(ASSET) BBOX=$(BBOX) \
-		S3_ENDPOINT_URL=http://localhost:9100 S3_BUCKET=eo-assets \
-		AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin \
-		STAC_URL=http://localhost:8081 \
-		sh -c 'uv run python -m eo_ingest.ensure_collection && \
-		       uv run python -m eo_ingest.ingest --day $(DATETIME)'
 
 seed: ## Seed the logbook with two missions + deliberate gaps (T17)
 	@# The seed reuses the full ingest path, so it needs BOTH the object store (assets) and the
@@ -189,6 +170,7 @@ seed: ## Seed the logbook with two missions + deliberate gaps (T17)
 		S3_ENDPOINT_URL=http://localhost:9100 S3_BUCKET=eo-assets \
 		AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin \
 		STAC_URL=http://localhost:8081 \
+		ASSET_BASE_URL=http://localhost:9100/eo-assets \
 		uv run python scripts/seed_stac.py
 
 clean: ## Reset demo state — delete workflows + clear the logbook + empty the bucket (keeps the cluster)

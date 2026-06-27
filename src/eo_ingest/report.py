@@ -95,7 +95,8 @@ def fetch_runs(argo_api_url: str, namespace: str, *, last_n: int = 20) -> list[R
     ``last_n``, not a hot path. The live list already carries nodes, so it needs no enrichment.
 
     Never raises: if both sources are unreachable, returns ``[]`` so the report still renders its
-    STAC-sourced half. TLS verification is off because argo-server uses a self-signed cert (local).
+    STAC-sourced half. argo-server is plain HTTP locally (``--secure=false``); ``verify=False``
+    is intentional.
     """
     base = argo_api_url.rstrip("/")
     sources = (
@@ -188,7 +189,7 @@ def report(
     start = start or date(2026, 3, 1)
     end = end or date(2026, 3, 14)
     collections = collections or [m.collection_id for m in iter_missions()]
-    argo_api_url = argo_api_url or env.get("ARGO_API_URL", "https://argo-server:2746")
+    argo_api_url = argo_api_url or env.get("ARGO_API_URL", "http://argo-server:2746")
     console = console or Console()
 
     heatmaps = []

@@ -1,6 +1,6 @@
 # Stage 03 — STAC logbook (Rung 3): the catalog repairs itself
 
-> The heart of the talk. Until now *you* told the pipeline what to do. Here the **logbook** does:
+> Until this rung, I had to tell the pipeline what to do. Here the **logbook** does:
 > it knows what should exist, finds what's missing, and fills exactly that — nothing more.
 
 _Ladder: rung 3 of 5 — you are here._
@@ -41,7 +41,7 @@ Seeded `synthetic-aurora-veil` had gaps at **03-04, 03-05, 03-10**. One `make de
 - **per-collection**: `synthetic-tidal-glass` kept *its* gaps — repairing one mission never touches
   the other.
 
-## Two-level self-correction (the teaching claim)
+## Two-level self-correction
 
 This is the second of two independent repair loops the ladder gives you for free:
 

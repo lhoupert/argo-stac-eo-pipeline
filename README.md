@@ -3,7 +3,7 @@
 > Companion repo for the FOSS4G Europe 2026 talk *"From Cron Job to Self-Healing Pipeline."*
 > **[Slides (live)](https://lhoupert.fr/foss4g2026-talk/) · [Deck repo](https://github.com/lhoupert/foss4g2026-talk)**
 
-A clone-and-run reference that walks the **maturity ladder** for Earth-observation data
+A clone-and-run reference that walks **a maturity ladder** for Earth-observation data
 ingestion — from a fragile cron job to a self-correcting pipeline — one independently
 runnable stage at a time. The unit-of-work ingest function never changes across rungs;
 only the orchestration around it grows.
@@ -13,18 +13,18 @@ only the orchestration around it grows.
 Folder number == rung number. Each rung is independently runnable and adds **one** idea — the
 ingest function is identical throughout; only the orchestration grows.
 
-| Rung | Stage | What's new | The lesson |
-|------|-------|-----------|------------|
-| **0** | `00-cron` | a laptop `crontab` → `docker run` (no Kubernetes) | fragile: nowhere to look at 3 am |
-| **1** | `01-argo-retries` | the same image under Argo + a STAC **logbook** | retries turn a lost day into a recovered one; you can finally *look* |
-| **2** | `02-fanout` | capped parallel backfill (`withItems`) | go fast **politely** — measured ~6× here |
-| **3** | `03-stac-logbook` | the logbook drives repair (`find_gaps`) | the system detects its own gaps and refills them |
-| **4** | `04-observability` | a daily report (Argo API + gap heatmap) | make the self-healing **visible** |
+| Rung | Stage | What is it |
+|------|-------|-----------|
+| **0** | `00-cron` | a laptop `crontab` → `docker run` |
+| **1** | `01-argo-retries` | the same image under Argo + a STAC **logbook** |
+| **2** | `02-fanout` | capped parallel backfill (`withItems`)  |
+| **3** | `03-stac-logbook` | the logbook drives repair (`find_gaps`) |
+| **4** | `04-observability` | a daily report (Argo API + gap heatmap) |
 
-> rung 5 isn't a folder — it's `make up PROFILE=prod` (eoAPI / titiler / Grafana), "where the
-> ladder leads."
+> rung 5 isn't a folder — the ladder continues to a production-grade stack (eoAPI, titiler,
+> Grafana); the design lives in `claude_docs/SPEC.md`.
 
-**Two levels of self-correction** fall out for free: an *item* that fails is **retried** (rung 1),
+**Two levels of self-correction** emerge from the design: an *item* that fails is **retried** (rung 1),
 and a *day* that's missing is **detected and refilled** (rung 3).
 
 ## Status
@@ -75,7 +75,7 @@ Then **open the Argo UI first**, so you watch the pipeline execute, and submit t
 second terminal — `make ui` and `make browse` each stay running (they hold a port-forward):
 
 ```bash
-make ui                 # terminal 1 — opens the Argo UI; leave it running (accept the cert warning)
+make ui                 # terminal 1 — opens the Argo UI (plain HTTP, no login); leave it running
 make demo STAGE=01      # terminal 2 — submit rung 1; watch ingest(0)✖ → ingest(1)✔ live in the UI
 make browse             # then — open stac-browser, the item is now in the logbook
 ```
@@ -125,20 +125,15 @@ also pays the one-time image pulls. Specs: **Apple M5, 10-core (4P+6E), 32 GB**.
 numbers, *not* a CI SLA — the **CI-runner budget is measured separately** in the kind-smoke job
 (T23, pending).
 
-## Footprint — core vs. prod
+## Footprint
 
-The **core** profile is the lightest thing that demonstrates each rung; the **prod** profile
-(`make up PROFILE=prod`) swaps in the production-grade stack, running the *same* workflows unchanged.
+The demo runs on **plain digest-pinned manifests**, single-replica, targeting a **4-core / 16 GB
+"average laptop"** (rung 0 runs on a 2-core free tier Codespace). CI-runner timings are measured
+separately from laptop numbers (see the cold/warm budget above).
 
-| | Core (default) | Prod (`PROFILE=prod`) |
-|--|----------------|------------------------|
-| STAC API | bare `stac-fastapi-pgstac` + one Postgres pod | eoAPI (`eoapi-k8s` Helm) |
-| Tiles / coverage | — | titiler-pgstac |
-| Dashboards | the rung-4 markdown report | + Grafana (AGPL) |
-| Install | plain digest-pinned manifests | Helm |
-| Target machine | **4-core / 16 GB "average laptop"** (rung 0 runs on a 2-core free tier) | more |
-
-CI-runner timings are measured separately from laptop numbers (see the cold/warm budget above).
+A production-grade extension would add: **eoAPI** (`eoapi-k8s` Helm) replacing the bare STAC API,
+**titiler-pgstac** for coverage tiles, and **Grafana** (AGPLv3) for an error-rate dashboard. That
+design is in `claude_docs/SPEC.md`; it is not part of this demo.
 
 ## Troubleshooting
 
@@ -182,7 +177,4 @@ Questions and "where's my pipeline on the ladder?" chats go in
 ## License & attribution
 
 Code is Apache-2.0 — see [`LICENSE`](./LICENSE). The synthetic imagery is generated (not real
-observations), licensed CC-BY-4.0. The optional real-data example uses **Sentinel-2** via
-[Earth Search](https://earth-search.aws.element84.com/v1); Copernicus Sentinel data are free and
-open under the [Copernicus terms](https://sentinels.copernicus.eu/web/sentinel/terms-conditions) —
-attribute "contains modified Copernicus Sentinel data [year]".
+observations), licensed CC-BY-4.0.

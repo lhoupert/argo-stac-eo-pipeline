@@ -11,6 +11,15 @@
   // Install the project (and dev tools) once the container is up.
   "postCreateCommand": "uv sync",
 
+  // The demo's port-forwards (make ui / make browse) are auto-forwarded by VS Code; these labels
+  // make them readable in the Ports panel. argo-server runs with --secure=false (plain HTTP), so
+  // 2746 needs no special protocol — HTTP is VS Code's default.
+  "portsAttributes": {
+    "2746": { "label": "Argo Workflows UI" },
+    "8081": { "label": "STAC API" },
+    "8082": { "label": "stac-browser UI" }
+  },
+
   "customizations": {
     "vscode": {
       "extensions": ["charliermarsh.ruff", "ms-python.python", "redhat.vscode-yaml"],

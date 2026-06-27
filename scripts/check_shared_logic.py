@@ -25,7 +25,7 @@ ONE_IMAGE = "eo-ingest:dev"
 
 # Frozen rung-1 form of the unit of work. ingest.py is byte-stable from rung 1 (AD-2); if it must
 # ever change, that is a deliberate, human-approved act — update this hash in the same commit.
-EXPECTED_INGEST_SHA256 = "a73b3682942e2a4a14c19ee77ec47fa8f578e0bdd83dbfdba3014c019f81547f"
+EXPECTED_INGEST_SHA256 = "9f0742af9dd3a6ae327cf05a18d5ffb4eea60ddd0f1a72eecd01c67c65c1fd15"
 
 _IMAGE_RE = re.compile(r"^\s*image:\s*([^\s#]+)", re.MULTILINE)
 

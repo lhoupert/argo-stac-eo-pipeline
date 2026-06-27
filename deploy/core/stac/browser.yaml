@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: stac-browser
-          image: ghcr.io/radiantearth/stac-browser@sha256:d953c6c0837f919e461bf7d6f1c6d2c6ce4f043629c39478c9c615cd491f1eea
+          image: ghcr.io/radiantearth/stac-browser@sha256:9e5731a6f3098e4194c5851c2965732c36d51efd9b1b2d6307037d0e06f866e9
           env:
             - name: SB_catalogUrl
               value: "http://localhost:8081"

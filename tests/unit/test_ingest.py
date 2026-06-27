@@ -14,7 +14,13 @@ from botocore.exceptions import ClientError
 from moto import mock_aws
 
 from eo_ingest.config import load_config
-from eo_ingest.ingest import TransientIngestError, _maybe_fail_once, ingest_one, main
+from eo_ingest.ingest import (
+    TransientIngestError,
+    _maybe_fail_once,
+    _rewrite_hrefs,
+    ingest_one,
+    main,
+)
 
 BUCKET = "eo-assets"
 DAY = date(2026, 3, 14)
@@ -103,6 +109,38 @@ def test_fail_once_propagates_unexpected_s3_error() -> None:
     cfg = load_config(_base_env(FAIL_ONCE="1"))
     with pytest.raises(ClientError):
         _maybe_fail_once(cfg, _RaisingHead(), BUCKET, "MOI-AV_20260314")
+
+
+@mock_aws
+@respx.mock
+def test_ingest_one_with_asset_base_url_posts_http_href() -> None:
+    import json
+
+    _make_bucket()
+    route = respx.post(ITEMS_URL).mock(return_value=httpx.Response(201))
+    cfg = load_config(_base_env(STAC_URL=STAC_URL, ASSET_BASE_URL="http://localhost:9100/eo-assets"))
+    ingest_one(cfg, DAY)
+    posted = json.loads(route.calls.last.request.content)
+    for name, asset in posted["assets"].items():
+        assert asset["href"].startswith("http://localhost:9100/eo-assets/"), (
+            f"asset {name!r}: expected HTTP href, got {asset['href']!r}"
+        )
+
+
+def test_rewrite_hrefs_no_op_when_base_url_unset() -> None:
+    cfg = load_config(_base_env())
+    href = "s3://eo-assets/col/2026/03/14/thumbnail.png"
+    item = {"assets": {"thumbnail": {"href": href}}}
+    result = _rewrite_hrefs(cfg, item)
+    assert result["assets"]["thumbnail"]["href"] == href
+
+
+def test_rewrite_hrefs_passes_through_non_matching_href() -> None:
+    cfg = load_config(_base_env(ASSET_BASE_URL="http://localhost:9100/eo-assets"))
+    href = "https://external.example.com/asset.tif"
+    item = {"assets": {"external": {"href": href}}}
+    result = _rewrite_hrefs(cfg, item)
+    assert result["assets"]["external"]["href"] == href
 
 
 @mock_aws

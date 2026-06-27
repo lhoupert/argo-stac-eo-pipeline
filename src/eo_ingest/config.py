@@ -40,6 +40,7 @@ class Config:
     ingest_sleep: float  # per-item sleep (s) simulating IO cost for the fan-out demo
     bbox: tuple[float, ...] | None  # earthsearch query bounds (lon_min,lat_min,lon_max,lat_max)
     asset: str  # which asset to ingest for earthsearch (default the small thumbnail)
+    asset_base_url: str | None  # None keeps s3:// hrefs; set to expose browser-fetchable URLs
 
     @property
     def registration_enabled(self) -> bool:
@@ -100,4 +101,5 @@ def load_config(env: Mapping[str, str] | None = None) -> Config:
         ingest_sleep=_parse_sleep("INGEST_SLEEP", env.get("INGEST_SLEEP", "0")),
         bbox=_parse_bbox("BBOX", env["BBOX"]) if (env.get("BBOX") or "").strip() else None,
         asset=env.get("ASSET", "thumbnail"),
+        asset_base_url=env.get("ASSET_BASE_URL") or None,
     )

@@ -4,12 +4,12 @@ This is the long-form companion to the README's quickstart: a **step-by-step wal
 maturity ladder** on your laptop. Each rung is one command, and for each we say **what you'll
 see**, **how to verify it**, and **the lesson** — the one idea that rung adds.
 
-The teaching device runs through everything: **the unit of work never changes.**
+The one constant throughout is **the unit of work — it never changes.**
 `src/eo_ingest/ingest.py` is byte-frozen from rung 1; every rung runs the *same* image, and only
 the orchestration around it grows. When code seems to "appear" at rung 3, it's the *logbook*
 (`logbook.py`) growing `find_gaps` — never the ingester.
 
-![The maturity ladder](slides/ladder.svg)
+![The maturity ladder](https://raw.githubusercontent.com/lhoupert/foss4g2026-talk/main/public/ladder.svg)
 
 > **New here?** Do the [Prerequisites](../README.md#prerequisites) first, then come back. The
 > short version: install Docker + `uv` + `kind` + `kubectl` + `argo` (or use the dev container),
@@ -23,7 +23,7 @@ they spin up a real (tiny) Kubernetes cluster. A fresh `make up` reaches a worki
 
 ## Rung 0 — the cron baseline (no Kubernetes)
 
-The starting point everyone recognises: a script on a laptop, run by `cron`. No cluster, no
+A familiar starting point: a script on a laptop, run by `cron`. No cluster, no
 catalog — deliberately fragile, so the later rungs have something to fix.
 
 ```bash
@@ -38,9 +38,9 @@ registration is skipped.
 **How to verify.** Open the MinIO console at <http://localhost:9001> (user/pass
 `minioadmin`/`minioadmin`) — the asset is there, and *nothing else*.
 
-**The lesson.** There's **nowhere to look at 3 am**: no logbook, no UI, no retry. A transient blip
+In practice, there's **nowhere to look at 3 am**: no logbook, no UI, no retry. A transient blip
 silently loses the day; object storage holds what *succeeded* but nothing records what *should*
-exist. That's the problem rung 1 solves. → details: [`stages/00-cron/`](../stages/00-cron/README.md)
+exist. That's what rung 1 addresses. → details: [`stages/00-cron/`](../stages/00-cron/README.md)
 
 ---
 
@@ -71,7 +71,7 @@ its terminal with a port-forward, so keep a couple of tabs open and run the `mak
 a **second** terminal:
 
 ```bash
-make ui       # opens the Argo UI; accept the self-signed-cert warning, then leave it running
+make ui       # opens the Argo UI (plain HTTP, no login); leave it running
 ```
 
 ---
@@ -109,7 +109,7 @@ curl -s http://localhost:8081/collections/synthetic-aurora-veil/items | jq '.fea
 > are `s3://…` URIs, which a browser can't fetch directly. The map footprint and item records are
 > the real signal here, not the preview image.
 
-**The lesson.** "Nowhere to look at 3 am" becomes "open the logbook, and the retry already handled
+In other words, "nowhere to look at 3 am" becomes "open the logbook, and the retry already handled
 the blip." Same image, same ingest code — the retry lives in the Argo spec, not the
 code. → details: [`stages/01-argo-retries/`](../stages/01-argo-retries/README.md)
 
@@ -117,7 +117,7 @@ code. → details: [`stages/01-argo-retries/`](../stages/01-argo-retries/README.
 
 ## Rung 2 — fan-out backfill (go fast, politely)
 
-Rung 1 ingested one day. Backfilling a month that way is 30 sequential runs. Rung 2 keeps the exact
+Rung 1 ingested one day; backfilling a month that way would mean 30 sequential runs. Rung 2 keeps the exact
 same `ingest` and fans it out across the window with Argo's `withItems`, capped so "fast" never
 means "rude."
 
@@ -144,14 +144,14 @@ argo submit -n eo --wait stages/02-fanout/workflows/backfill.yaml    # fan-out
 Measured here: **~311 s sequential vs ~50 s fan-out ≈ 6.2×**. (Not 10× — per-pod startup on one
 node erodes the cap; the cap is a *politeness ceiling*, not a throughput guarantee.)
 
-**The lesson.** Parallelism is a property of the *orchestration*, not the code — `ingest.py` has
+Parallelism here is a property of the *orchestration*, not the code — `ingest.py` has
 no batching logic. → details: [`stages/02-fanout/`](../stages/02-fanout/README.md)
 
 ---
 
-## Rung 3 — the logbook repairs itself (the heart of the talk)
+## Rung 3 — the logbook repairs itself
 
-Until now *you* told the pipeline what to do. Here the **logbook** does: it knows what should
+Until rung 3, I had to tell the pipeline what to do. Here the **logbook** does: it knows what should
 exist, finds what's missing (`find_gaps`), and fills exactly that — nothing more. Rung 3 needs
 some holes to close, so seed them first:
 
@@ -179,7 +179,7 @@ argo submit -n eo --watch stages/03-stac-logbook/workflows/repair.yaml \
   -p collection=synthetic-tidal-glass
 ```
 
-**The lesson — two levels of self-correction, both for free:**
+**Two levels of self-correction, both built into the ladder:**
 
 | Level | Failure | Who fixes it | Rung |
 |-------|---------|--------------|------|
@@ -208,7 +208,7 @@ Argo run summary (read from the durable workflow *archive* — "1 attempt failed
 **system-level** gap heatmap with ⬜ flipping to ✅. Repair a collection at rung 3 and re-run this:
 its ⬜ flip to ✅.
 
-**The lesson.** A self-healing pipeline still needs a window onto *what* it healed — the item level
+A self-healing pipeline still needs a window onto *what* it healed — the item level
 corrects itself silently; the system level needs this report to be visible. (No Prometheus/Grafana
 in core: the report is sourced from systems the pipeline already runs — the Argo API and the
 logbook.) → details: [`stages/04-observability/`](../stages/04-observability/README.md)
@@ -232,10 +232,9 @@ use `make down` then `make up`.
 
 ## Rung 5 — where the ladder leads (optional)
 
-Rung 5 isn't a folder — it's the *same workflows* on a production-grade stack (eoAPI, titiler,
-Grafana) via `make up PROFILE=prod`. It's the "here's where this goes" payoff, **not** a
-prerequisite for walking the ladder. The prod profile is still being built (tracked as T25), so
-today `PROFILE=prod` fails loudly rather than pretending to be core.
+Rung 5 isn't a folder — the ladder continues to a production-grade stack (eoAPI, titiler, Grafana).
+It's the "here's where this goes" payoff, **not** a prerequisite for walking the ladder. The design
+lives in `claude_docs/SPEC.md`; it is not part of this demo.
 
 ---
 
@@ -247,9 +246,29 @@ make down    # delete the kind cluster (idempotent)
 
 ---
 
-## When something looks wrong
+## Observe the cluster (and when something looks wrong)
+
+`make status` and `make check` are the two fastest "what's going on?" probes. To look closer, run
+these wherever you brought the cluster up — your host, or the dev container — against the
+`kind-eo-ladder` context:
+
+```bash
+make status                         # pods + the demo URLs at a glance
+kubectl -n eo get pods              # raw pod status (Running / Completed / Error)
+kubectl -n eo get all              # pods, services, deployments together
+kubectl -n eo logs deploy/stac-api  # a component's logs (swap in pgstac, minio, …)
+kubectl -n eo describe pod <name>   # why a pod is Pending / CrashLooping
+kubectl -n eo get events --sort-by=.lastTimestamp   # recent cluster events
+
+argo list -n eo                     # every workflow run + its status
+argo get  -n eo @latest             # the step tree of the last run (the ✖→✔ retry view)
+argo logs -n eo @latest             # that run's pod logs
+```
+
+The two web UIs need a port-forward, which the Makefile wraps: `make ui` (Argo Workflows,
+http://localhost:2746) and `make browse` (STAC API + stac-browser). In a dev container, run these
+in the editor-attached terminal so the port is forwarded to your host browser.
 
 The README's [Troubleshooting table](../README.md#troubleshooting) covers the usual suspects —
 stale in-cluster image (`make rebuild`), an ambient `S3_*` env leaking into a host script, blank
-previews (FU-2), slow first `make up`, and the Windows/WSL2 note. `make status` and
-`make check` are the two fastest "what's wrong?" probes.
+previews (FU-2), slow first `make up`, and the Windows/WSL2 note.

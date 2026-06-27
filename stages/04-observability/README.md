@@ -23,7 +23,7 @@ argo logs @latest -n eo    # see the rich heatmap in the pod logs
 argo get @latest -n eo -o json | jq -r '.status.nodes[].outputs.parameters[0].value'
 ```
 
-## Two levels, two sources (the distinction this rung teaches)
+## Two levels, two sources
 
 | Level | What it shows | Automatic or surfaced? | Source |
 |-------|----------------|------------------------|--------|
@@ -39,18 +39,18 @@ the whole point of rung 4: a self-healing pipeline still needs a window onto *wh
 its rung-3 repair, `synthetic-tidal-glass` still at **4 ⬜**, and **1 attempt failed then retried**
 read from the durable archive (it survived workflow GC — that's why the archive exists).
 
-Repair a collection (`make demo STAGE=03 -p collection=…`) and re-run this report: its ⬜ flip to ✅.
+Repair a collection (`make demo STAGE=03 ARGS="-p collection=synthetic-tidal-glass"`) and re-run this report: its ⬜ flip to ✅.
 
 ## Why no Prometheus / Grafana here (core profile)
 
 The report is sourced entirely from the **Argo Workflows API** and the **STAC logbook** — systems
 the pipeline already runs. The core profile stays small and dependency-light; the optional **prod**
-profile (T25) adds Grafana + a titiler coverage map for a richer dashboard, running the *same*
+profile adds Grafana + a titiler coverage map for a richer dashboard, running the *same*
 workflows unchanged.
 
 ## End of the ladder
 
-That's rungs 0 → 4: a fragile cron job became an orchestrated, parallel, **self-correcting**
+Rungs 0 → 4: what started as a fragile cron job is now an orchestrated, parallel, **self-correcting**
 pipeline with a logbook and a window onto its own health — and the unit of work never changed.
 ```
 0 cron → 1 retries+logbook → 2 fan-out → 3 gap-closing → 4 observability

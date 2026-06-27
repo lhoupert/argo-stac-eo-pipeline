@@ -54,7 +54,7 @@ The catalog goes from empty to **30 items** (`MOI-AV_20260301 … MOI-AV_2026033
 Honest answer: **per-pod startup overhead, on one node.** Each ingest is `~2 s` of simulated work
 plus a few seconds of pod scheduling/pull/init — and a single kind node can't truly bring up 10
 pods' worth of startup in parallel. So the *effective* parallelism is below the cap, and the ideal
-`10×` erodes to a measured `~6×`. That's the real lesson: **the cap is a politeness ceiling, not a
+`10×` erodes to a measured `~6×`. In practice, **the cap is a politeness ceiling, not a
 throughput guarantee** — it protects the upstream source (and your one node), and the speedup you
 actually get is whatever the slowest shared resource allows. Bigger per-item cost (real IO) pushes
 the ratio back toward the cap.
