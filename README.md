@@ -1,6 +1,7 @@
 # argo-stac-eo-pipeline
 
-> Companion repo for the FOSS4G Europe 2026 [talk](https://github.com/lhoupert/foss4g2026-talk) *"From Cron Job to Self-Healing Pipeline."*
+> Companion repo for the FOSS4G Europe 2026 talk *"From Cron Job to Self-Healing Pipeline."*
+> **[Slides (live)](https://lhoupert.fr/foss4g2026-talk/) · [Deck repo](https://github.com/lhoupert/foss4g2026-talk)**
 
 A clone-and-run reference that walks **a maturity ladder** for Earth-observation data
 ingestion — from a fragile cron job to a self-correcting pipeline — one independently
@@ -28,8 +29,9 @@ and a *day* that's missing is **detected and refilled** (rung 3).
 
 ## Status
 
-✅ **Rungs 0–4 run end-to-end** on a local `kind` cluster. Polish & release work (full CI) is in progress.
-The conference talk + slide deck live in a [separate repository](https://github.com/lhoupert/foss4g2026-talk).
+✅ **Rungs 0–4 run end-to-end** on a local `kind` cluster. Polish & release work (full CI, prod
+profile, real-data example) is in progress.
+The conference talk + slide deck live in a [separate repository](https://github.com/lhoupert/foss4g2026-talk); the slides are served live at <https://lhoupert.fr/foss4g2026-talk/>.
 
 ## Prerequisites
 
