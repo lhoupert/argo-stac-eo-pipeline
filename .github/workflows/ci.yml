@@ -46,8 +46,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install argo CLI
         run: |
+          mkdir -p "$HOME/.local/bin"
           curl -fsSL https://github.com/argoproj/argo-workflows/releases/download/v3.7.4/argo-linux-amd64.gz \
-            | gunzip > /usr/local/bin/argo && chmod +x /usr/local/bin/argo
+            | gunzip > "$HOME/.local/bin/argo"
+          chmod +x "$HOME/.local/bin/argo"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Lint every stage workflow (offline)
         run: |
           shopt -s globstar nullglob
@@ -80,7 +83,7 @@ jobs:
           load: true
           tags: eo-ingest:scan
       - name: Trivy image scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: eo-ingest:scan
           severity: HIGH,CRITICAL
@@ -109,11 +112,13 @@ jobs:
       - name: Install kind + kubectl + argo
         run: |
           set -eux
-          curl -fsSLo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.32.0/kind-linux-amd64
-          curl -fsSLo /usr/local/bin/kubectl https://dl.k8s.io/release/v1.34.1/bin/linux/amd64/kubectl
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSLo "$HOME/.local/bin/kind" https://kind.sigs.k8s.io/dl/v0.32.0/kind-linux-amd64
+          curl -fsSLo "$HOME/.local/bin/kubectl" https://dl.k8s.io/release/v1.34.1/bin/linux/amd64/kubectl
           curl -fsSL https://github.com/argoproj/argo-workflows/releases/download/v3.7.4/argo-linux-amd64.gz \
-            | gunzip > /usr/local/bin/argo
-          chmod +x /usr/local/bin/kind /usr/local/bin/kubectl /usr/local/bin/argo
+            | gunzip > "$HOME/.local/bin/argo"
+          chmod +x "$HOME/.local/bin/kind" "$HOME/.local/bin/kubectl" "$HOME/.local/bin/argo"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Sync deps
         run: uv sync --locked
       - name: Timed cold smoke (make down -> up -> demo STAGE=01, asserts the budget)
