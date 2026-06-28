@@ -8,6 +8,10 @@ commands below**, you can just open the repo in VS Code and **Reopen in Containe
 Codespace**, and everything here is applied automatically. See
 [Dev container / Codespaces](../README.md#dev-container--codespaces) in the README for that path.
 
+> [!NOTE]
+> Verified on a host install and the **local dev container** (VS Code "Reopen in Container").
+> Codespaces *should* work identically but isn't tested yet — fall back to either if it misbehaves.
+
 The notes here are for **validating the container itself from a terminal** — no editor in the loop.
 Useful for a quick "does the Codespace path still work?" check or a maintainer pass over this
 less-exercised route.
