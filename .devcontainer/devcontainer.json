@@ -15,9 +15,10 @@
   // make them readable in the Ports panel. argo-server runs with --secure=false (plain HTTP), so
   // 2746 needs no special protocol — HTTP is VS Code's default.
   "portsAttributes": {
-    "2746": { "label": "Argo Workflows UI" },
-    "8081": { "label": "STAC API" },
-    "8082": { "label": "stac-browser UI" }
+    "2746": { "label": "Argo Workflows UI", "onAutoForward": "silent" },
+    "8081": { "label": "STAC API",          "onAutoForward": "silent" },
+    "8082": { "label": "stac-browser UI",   "onAutoForward": "openBrowser" },
+    "9100": { "label": "MinIO assets",      "onAutoForward": "silent" }
   },
 
   "customizations": {

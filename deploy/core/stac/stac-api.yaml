@@ -47,6 +47,11 @@ spec:
             # Enable writes (POST/PUT collections + items). Read-only without it -> every write 405s.
             - name: ENABLE_TRANSACTIONS_EXTENSIONS
               value: "TRUE"
+            # Allow cross-origin requests from stac-browser (any origin, including Codespace proxy URLs).
+            - name: CORS_ORIGINS
+              value: "*"
+            - name: CORS_METHODS
+              value: "GET,POST,PUT,DELETE,OPTIONS"
             - name: APP_HOST
               value: "0.0.0.0"
             # The image's launcher serves on 8080 regardless of APP_PORT; match it.

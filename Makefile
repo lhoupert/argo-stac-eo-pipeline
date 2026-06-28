@@ -99,33 +99,69 @@ down: ## Delete the kind cluster (idempotent)
 	fi
 
 # --- access ---------------------------------------------------------------------------------------
-ui: ## Port-forward the Argo Workflows UI (http://localhost:2746) and open it
-	@echo "Argo UI -> http://localhost:2746  (auth-mode=server, no token)"
-	@# Same UX as `browse`: open the UI in the browser, then hold the port-forward in the
-	@# foreground (Ctrl-C to stop). We background the forward, give it a moment to bind, open the
-	@# URL, then `wait` so the target stays attached and the trap cleans the forward up on exit.
+# _url PORT — resolve the right URL for a given port.
+#   • Locally:             http://localhost:PORT
+#   • GitHub Codespaces:   https://<name>-PORT.<domain>   (port must be forwarded / set to Public)
+define _url
+$$(if [ -n "$$CODESPACE_NAME" ]; then \
+	echo "https://$$CODESPACE_NAME-$(1).$${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}"; \
+else \
+	echo "http://localhost:$(1)"; \
+fi)
+endef
+
+# _open PORT — open the browser if possible; fall back to printing the URL.
+#   • macOS (local):      `open` launches the default browser.
+#   • Codespace:          prints the proxy URL (browser can't reach localhost).
+#   • devcontainer/Linux: `open` and `xdg-open` don't work; VS Code's onAutoForward
+#                         in devcontainer.json re-opens the tab automatically, but we
+#                         also print the URL so it's always visible in the terminal.
+define _open
+if [ -n "$$CODESPACE_NAME" ]; then \
+	d=$${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}; \
+	echo "  open in browser -> https://$$CODESPACE_NAME-$(1).$$d"; \
+	echo "  (ports are set to Public via devcontainer.json — no auth needed)"; \
+elif command -v open >/dev/null 2>&1; then \
+	open "http://localhost:$(1)"; \
+else \
+	echo "  open in browser -> http://localhost:$(1)"; \
+	( command -v xdg-open >/dev/null 2>&1 && xdg-open "http://localhost:$(1)" ) || true; \
+fi
+endef
+
+ui: ## Port-forward the Argo Workflows UI and open it (localhost:2746 or Codespace URL)
+	@# Background the forward, wait for it to bind, open/print the URL, then hold with `wait`.
 	@# argo-server runs with --secure=false (plain HTTP), so there is no cert warning to accept.
 	@kubectl -n $(NS) port-forward svc/argo-server 2746:2746 >/dev/null 2>&1 & \
 		ui_pf=$$!; trap 'kill $$ui_pf 2>/dev/null' EXIT; sleep 2; \
-		( command -v open >/dev/null 2>&1 && open http://localhost:2746 ) || \
-		  ( command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:2746 ) || true; \
+		echo "Argo UI -> http://localhost:2746  (auth-mode=server, no token)"; \
+		$(call _open,2746); \
 		wait $$ui_pf
 
-browse: ## Port-forward the STAC API + MinIO assets + stac-browser UI (http://localhost:8082)
-	@# stac-browser is a client-side app: SB_catalogUrl points the *browser* at localhost:8081.
-	@# MinIO is forwarded to 9100 so browser-fetchable ASSET_BASE_URL=http://localhost:9100/eo-assets
-	@# resolves for thumbnail previews. Both background forwards are cleaned up on exit.
-	@echo "STAC API       -> http://localhost:8081"
-	@echo "MinIO assets   -> http://localhost:9100"
-	@echo "stac-browser   -> http://localhost:8082"
+browse: ## Port-forward STAC API + MinIO + stac-browser and open the browser UI
+	@# stac-browser is a client-side app that fetches SB_catalogUrl from the *user's real browser*.
+	@# Locally that's http://localhost:8081.  In a Codespace the browser can't reach localhost, so
+	@# we patch the deployment to use the codespace proxy URL before starting the port-forwards.
+	@# MinIO is on 9100 for browser-fetchable thumbnail previews.
+	@if [ -n "$$CODESPACE_NAME" ]; then \
+		d=$${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}; \
+		catalog_url="https://$$CODESPACE_NAME-8081.$$d"; \
+		echo "Codespace detected — patching stac-browser SB_catalogUrl -> $$catalog_url"; \
+		kubectl -n $(NS) set env deploy/stac-browser SB_catalogUrl="$$catalog_url"; \
+		kubectl -n $(NS) rollout status deploy/stac-browser --timeout=60s; \
+	fi
 	@kubectl -n $(NS) port-forward svc/stac-api 8081:80 >/dev/null 2>&1 & \
 		api_pf=$$!; \
 		kubectl -n $(NS) port-forward svc/minio 9100:9000 >/dev/null 2>&1 & \
 		minio_pf=$$!; \
-		trap 'kill $$api_pf $$minio_pf 2>/dev/null' EXIT; \
-		( command -v open >/dev/null 2>&1 && open http://localhost:8082 ) || \
-		  ( command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:8082 ) || true; \
-		kubectl -n $(NS) port-forward svc/stac-browser 8082:80
+		kubectl -n $(NS) port-forward svc/stac-browser 8082:80 >/dev/null 2>&1 & \
+		sb_pf=$$!; \
+		trap 'kill $$api_pf $$minio_pf $$sb_pf 2>/dev/null' EXIT; sleep 2; \
+		echo "STAC API     -> http://localhost:8081"; \
+		echo "MinIO assets -> http://localhost:9100"; \
+		echo "stac-browser -> http://localhost:8082"; \
+		$(call _open,8082); \
+		wait $$api_pf $$minio_pf $$sb_pf
 
 status: ## Show cluster health (pods) + the demo URLs at a glance
 	@if ! kind get clusters 2>/dev/null | grep -qx "$(CLUSTER)"; then \
@@ -134,10 +170,18 @@ status: ## Show cluster health (pods) + the demo URLs at a glance
 		echo "pods in namespace $(NS):"; \
 		kubectl -n $(NS) get pods; \
 		echo; \
-		echo "URLs (each needs its port-forward — the command in parentheses):"; \
-		echo "  Argo UI        http://localhost:2746    (make ui)"; \
-		echo "  STAC API       http://localhost:8081     (make browse)"; \
-		echo "  stac-browser   http://localhost:8082     (make browse)"; \
+		if [ -n "$$CODESPACE_NAME" ]; then \
+			d=$${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}; \
+			echo "URLs (Codespace — set ports to Public if access is denied):"; \
+			echo "  Argo UI      https://$$CODESPACE_NAME-2746.$$d   (make ui)"; \
+			echo "  STAC API     https://$$CODESPACE_NAME-8081.$$d   (make browse)"; \
+			echo "  stac-browser https://$$CODESPACE_NAME-8082.$$d   (make browse)"; \
+		else \
+			echo "URLs (each needs its port-forward — the command in parentheses):"; \
+			echo "  Argo UI        http://localhost:2746    (make ui)"; \
+			echo "  STAC API       http://localhost:8081    (make browse)"; \
+			echo "  stac-browser   http://localhost:8082    (make browse)"; \
+		fi; \
 	fi
 
 # --- demos --------------------------------------------------------------------------------------
