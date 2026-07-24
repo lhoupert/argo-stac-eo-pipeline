@@ -10,7 +10,7 @@ dependencies = [
     "pystac>=1.10",
     "pystac-client>=0.8",
     "rich>=13.7",
-    "pillow>=10.3",
+    "pillow>=12.3",
     "httpx>=0.27",
 ]
 
