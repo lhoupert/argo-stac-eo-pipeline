@@ -1,0 +1,27 @@
+# The smoke test for the Argo install: a one-step workflow that prints a line and exits 0.
+# Runs as the least-privilege `argo-workflow` SA (see rbac.yaml) on a digest-pinned busybox, so a
+# successful completion proves the controller schedules pods, the executor reports results back,
+# and that minimal RBAC is sufficient. Submit with:
+#   argo submit -n eo --watch deploy/core/argo/hello.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: hello-
+  namespace: eo
+  labels:
+    app: argo
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: main
+  templates:
+    - name: main
+      container:
+        image: busybox@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+        command: ["sh", "-c"]
+        args: ["echo 'hello from the eo ladder — argo is live'"]
+        resources:
+          requests:
+            cpu: 50m
+            memory: 32Mi
+          limits:
+            memory: 64Mi

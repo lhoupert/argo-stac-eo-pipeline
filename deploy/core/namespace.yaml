@@ -1,0 +1,6 @@
+# One namespace for the whole core stack (MinIO, STAC, Argo, workflows) so services resolve by
+# short in-cluster DNS — http://minio:9000, http://stac-api — exactly as the ingester config expects.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: eo

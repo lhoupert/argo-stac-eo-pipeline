@@ -1,0 +1,8 @@
+# Rung 0 — the fragile baseline: a laptop cron job. No cluster, no catalog, no UI.
+# Ingest one scene daily at 03:00. If it fails, the log file below is the only trace.
+#
+# Install (adjust the absolute path to your checkout — cron needs absolute paths):
+#   crontab stages/00-cron/crontab
+#   tail -f /tmp/eo-rung0.log
+#
+0 3 * * * /ABSOLUTE/PATH/TO/argo-stac-eo-pipeline/stages/00-cron/run.sh >> /tmp/eo-rung0.log 2>&1
