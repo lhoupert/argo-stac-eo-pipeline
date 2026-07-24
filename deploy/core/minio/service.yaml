@@ -1,0 +1,18 @@
+# Stable in-cluster address: http://minio:9000 (S3 API) and :9001 (console).
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: eo
+  labels:
+    app: minio
+spec:
+  selector:
+    app: minio
+  ports:
+    - name: api
+      port: 9000
+      targetPort: api
+    - name: console
+      port: 9001
+      targetPort: console

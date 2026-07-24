@@ -1,0 +1,73 @@
+"""Contract tests for the top-level Makefile.
+
+The Makefile is orchestration glue over `kind`/`kubectl`/`argo`, so its end-to-end behaviour
+(`make up` -> cluster -> `make down`) is verified by a human running the real cycle. What we *can*
+pin here, offline and without a cluster, is the Makefile's **decision logic**:
+
+  * every promised target actually exists;
+  * `demo` refuses to run without a STAGE (no silent no-op).
+
+These guards run before any `docker`/`kind`/`kubectl` call, so the tests touch nothing external.
+"""
+
+from __future__ import annotations
+
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+MAKEFILE = REPO_ROOT / "Makefile"
+
+# The targets the Makefile promises (plus the helpers they lean on).
+PROMISED_TARGETS = [
+    "help", "check", "up", "down", "ui", "browse", "status",
+    "seed", "demo", "clean", "reset", "build",
+]
+
+requires_make = pytest.mark.skipif(shutil.which("make") is None, reason="`make` not on PATH")
+
+
+def _make(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["make", *args],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+
+def test_makefile_exists() -> None:
+    assert MAKEFILE.is_file(), "a top-level Makefile is required"
+
+
+@requires_make
+@pytest.mark.parametrize("target", PROMISED_TARGETS)
+def test_target_is_defined(target: str) -> None:
+    # `-n` is a dry run: it expands and prints recipes but executes nothing, so no cluster is
+    # touched. An undefined target makes `make` fail with "No rule to make target".
+    result = _make("-n", target, "STAGE=01")
+    assert "No rule to make target" not in result.stderr, (
+        f"target `{target}` is not defined:\n{result.stderr}"
+    )
+    assert result.returncode == 0, f"`make -n {target}` failed:\n{result.stderr}"
+
+
+@requires_make
+def test_demo_requires_stage() -> None:
+    # No STAGE -> must fail loudly rather than silently submitting nothing.
+    result = _make("demo")
+    assert result.returncode != 0
+    assert "STAGE" in (result.stdout + result.stderr)
+
+
+@requires_make
+def test_reset_runs_clean_then_seed() -> None:
+    # `reset` is a convenience wrapper — it must drive both `clean` and `seed`, not reimplement.
+    result = _make("-n", "reset")
+    assert result.returncode == 0
+    out = result.stdout + result.stderr
+    assert "make clean" in out and "make seed" in out

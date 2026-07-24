@@ -1,0 +1,93 @@
+# pgSTAC Postgres — the logbook's storage. The ghcr.io/stac-utils/pgstac image installs and
+# migrates pgSTAC on first init (its /docker-entrypoint-initdb.d scripts), so a fresh emptyDir
+# comes up fully migrated — no separate migration Job. Ephemeral storage (core profile).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pgstac-credentials
+  namespace: eo
+type: Opaque
+stringData:
+  # Must be "postgres": the pgstac image's init scripts connect as the role matching the
+  # postgres OS user; a different superuser name makes them fail with "role does not exist".
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  POSTGRES_DB: pgstac
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgstac
+  namespace: eo
+  labels:
+    app: pgstac
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pgstac
+  template:
+    metadata:
+      labels:
+        app: pgstac
+    spec:
+      containers:
+        - name: postgres
+          image: ghcr.io/stac-utils/pgstac@sha256:26d5c20c650736a65793ab61cb2e7113ecef0c036ec8c2d6c6838c7aa14e131d
+          envFrom:
+            - secretRef:
+                name: pgstac-credentials
+          env:
+            # Keep PGDATA in a subdir of the mount so initdb sees an empty target.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - name: postgres
+              containerPort: 5432
+          # First boot installs+migrates pgSTAC (loads a large SQL dump). The startupProbe gives
+          # that up to ~5 min before liveness can act, so we never kill the pod mid-migration and
+          # leave a half-initialized data dir. Readiness gates on the pgstac schema actually
+          # existing — not just "postgres accepts connections" — so the Service only routes traffic
+          # once the logbook is queryable.
+          startupProbe:
+            exec:
+              command: ["sh", "-c", 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select pgstac.get_version()"']
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            periodSeconds: 15
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgstac
+  namespace: eo
+  labels:
+    app: pgstac
+spec:
+  selector:
+    app: pgstac
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

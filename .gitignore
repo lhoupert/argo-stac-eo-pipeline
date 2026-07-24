@@ -1,0 +1,44 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.egg-info/
+
+# ---- uv / virtualenvs ----
+.venv/
+venv/
+env/
+# uv.lock is committed (reproducibility) — do NOT ignore it
+
+# ---- Testing / coverage ----
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# ---- Environment / secrets ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+kubeconfig
+*.kubeconfig
+
+# ---- Kubernetes / Helm ----
+*.tgz
+
+# ---- Internal working files (kept local, never published) ----
+.claude/
+
+# ---- OS / editor cruft ----
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
