@@ -29,11 +29,11 @@ catalog — deliberately fragile, so the later rungs have something to fix.
 ./stages/00-cron/run.sh 2026-03-15   # …or a specific day
 ```
 
-**What you'll see.** The script builds/uses the `eo-ingest:dev` image, starts a local MinIO, and
+**What you'll see.** The script builds/uses the `eo-ingest:dev` image, starts a local RustFS, and
 runs the ingester with `STAC_URL` **unset** — so the asset lands in object storage and
 registration is skipped.
 
-**How to verify.** Open the MinIO console at <http://localhost:9001> (user/pass
+**How to verify.** Open the RustFS console at <http://localhost:9001> (user/pass
 `minioadmin`/`minioadmin`) — the asset is there, and *nothing else*.
 
 In practice, there's **nowhere to look at 3 am**: no logbook, no UI, no retry. A transient blip
@@ -43,11 +43,11 @@ exist. That's what rung 1 addresses. → details: [`stages/00-cron/`](../stages/
 ## Bring up the cluster (once)
 
 Everything from rung 1 on runs on a local `kind` cluster. One command brings up the whole core
-stack — MinIO, pgSTAC (the logbook's Postgres), the STAC API, stac-browser, and Argo:
+stack — RustFS, pgSTAC (the logbook's Postgres), the STAC API, stac-browser, and Argo:
 
 ```bash
 make check    # optional but recommended: confirms Docker is running + the CLIs are installed
-make up       # kind + MinIO + pgSTAC + STAC API + stac-browser + Argo  (one cluster)
+make up       # kind + RustFS + pgSTAC + STAC API + stac-browser + Argo  (one cluster)
 ```
 
 > **Be patient on the first run — it is not hung.** A cold `make up` pulls several container

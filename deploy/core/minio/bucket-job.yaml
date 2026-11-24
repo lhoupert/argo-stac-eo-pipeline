@@ -1,5 +1,6 @@
-# Bootstrap the asset bucket once MinIO is up. Idempotent (--ignore-existing), so re-applying is
-# safe. mc image pinned by digest.
+# Bootstrap the asset bucket once the object store is up: public read and CORS so stac-browser (a
+# client-side app) can fetch thumbnails. Runs `eo_ingest.bucket` from the one ingester image (loaded
+# into kind by `make up`), so no extra client image is needed. Idempotent, so re-applying is safe.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -14,20 +15,22 @@ spec:
     spec:
       restartPolicy: OnFailure
       containers:
-        - name: mc
-          image: minio/mc@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
-          envFrom:
-            - secretRef:
-                name: minio-credentials
-          command: ["sh", "-c"]
-          args:
-            - |
-              set -e
-              until mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; do
-                echo "waiting for minio..."; sleep 2
-              done
-              mc mb --ignore-existing local/eo-assets
-              # demo only: public read so stac-browser (a client-side app) can fetch thumbnails
-              mc anonymous set download local/eo-assets
-              # CORS is configured server-wide via MINIO_API_CORS_ALLOW_ORIGIN in deployment.yaml
-              mc ls local
+        - name: bootstrap
+          image: eo-ingest:dev
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "eo_ingest.bucket"]
+          env:
+            - name: S3_ENDPOINT_URL
+              value: http://minio:9000
+            - name: S3_BUCKET
+              value: eo-assets
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: MINIO_ROOT_USER
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: MINIO_ROOT_PASSWORD

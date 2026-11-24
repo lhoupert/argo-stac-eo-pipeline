@@ -15,7 +15,7 @@ but under Argo Workflows. Two changes, both purely orchestration:
    finally look at what landed.
 
 ```
-CronWorkflow (0 3 * * *) ─▶ ensure-collection ─▶ ingest ──▶ MinIO (assets)
+CronWorkflow (0 3 * * *) ─▶ ensure-collection ─▶ ingest ──▶ RustFS (assets)
    the same image                                 │ retry    └─▶ STAC API (the logbook)
    the same env-driven config                     └─ FAIL_ONCE: fail once, then succeed
 ```
@@ -23,7 +23,7 @@ CronWorkflow (0 3 * * *) ─▶ ensure-collection ─▶ ingest ──▶ MinIO 
 ## Run it
 
 ```bash
-make up                 # cluster + MinIO + STAC + stac-browser + Argo  (once)
+make up                 # cluster + RustFS + STAC + stac-browser + Argo  (once)
 make demo STAGE=01      # submit the Workflow and watch the retry happen live
 make browse             # open stac-browser → the item appears in the logbook
 make ui                 # open the Argo UI → see the failed-then-retried step
@@ -38,7 +38,7 @@ so it runs immediately and `--watch` follows it). You'll see the ingest step go
 ```bash
 # the item is in the logbook (collection auto-created by the ensure-collection step):
 curl -s http://localhost:8081/collections/synthetic-aurora-veil/items | jq '.features[].id'
-# the assets are in MinIO: synthetic-aurora-veil/2026/03/14/{data,thumbnail}.png
+# the assets are in RustFS: synthetic-aurora-veil/2026/03/14/{data,thumbnail}.png
 ```
 
 ## The scheduled form (the literal 0 → 1 delta)

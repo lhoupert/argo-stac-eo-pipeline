@@ -1,5 +1,5 @@
-# MinIO — the S3-compatible object store, a single-container Deployment (plain manifest, core
-# profile). Storage is emptyDir: ephemeral on purpose for the local demo; the prod profile swaps
+# The S3-compatible object store (RustFS; the name `minio` is historical), a single-container
+# Deployment (plain manifest, core profile). Storage is emptyDir: ephemeral on purpose for the local demo; the prod profile swaps
 # in a PVC. Image pinned by digest.
 apiVersion: apps/v1
 kind: Deployment
@@ -20,17 +20,23 @@ spec:
     spec:
       containers:
         - name: minio
-          image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
-          args: ["server", "/data", "--console-address", ":9001"]
+          # RustFS, an Apache-2.0 S3-compatible server: MinIO's community images are no longer
+          # published on Docker Hub (Nov 2026). Names (minio, minio-credentials) are kept so the
+          # workflows, Makefile and port-forwards are unchanged.
+          image: rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a
           env:
-            # Server-wide wildcard CORS so stac-browser (localhost:8082) can GET thumbnails
-            # from MinIO (localhost:9100). Replaces per-bucket `mc cors set` which broke when
-            # mc/minio versions diverged (mc sends a checksum header the CORS endpoint rejects).
-            - name: MINIO_API_CORS_ALLOW_ORIGIN
-              value: "*"
-          envFrom:
-            - secretRef:
-                name: minio-credentials
+            - name: RUSTFS_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: MINIO_ROOT_USER
+            - name: RUSTFS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: MINIO_ROOT_PASSWORD
+            - name: RUSTFS_CONSOLE_ENABLE
+              value: "true"
           ports:
             - name: api
               containerPort: 9000
@@ -38,13 +44,13 @@ spec:
               containerPort: 9001
           readinessProbe:
             httpGet:
-              path: /minio/health/ready
+              path: /health
               port: api
             initialDelaySeconds: 5
             periodSeconds: 5
           livenessProbe:
             httpGet:
-              path: /minio/health/live
+              path: /health
               port: api
             initialDelaySeconds: 10
             periodSeconds: 10
