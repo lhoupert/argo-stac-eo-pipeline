@@ -1,0 +1,44 @@
+# Set update schedule for GitHub Actions, the Dockerfile images and the Python
+# dependencies in uv.lock
+
+version: 2
+updates:
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    cooldown:
+      default-days: 7
+    schedule:
+      interval: "monthly"
+    groups:
+      all:
+        patterns:
+        - "*"
+
+  # Moves the digest-pinned images in the two Dockerfiles. No cooldown: base
+  # image updates carry the OS security fixes. deploy/ is left out on purpose:
+  # kindest/node must match the kind release in CI, install.yaml matches the
+  # argo CLI version, and a digest without a tag would follow "latest".
+  - package-ecosystem: "docker"
+    directories:
+      - "/"
+      - "/.devcontainer"
+    schedule:
+      interval: "weekly"
+    groups:
+      docker:
+        patterns:
+        - "*"
+
+  - package-ecosystem: "uv"
+    directory: "/"
+    # Version updates only: security updates ignore the cooldown.
+    cooldown:
+      default-days: 7
+    schedule:
+      interval: "weekly"
+    groups:
+      python:
+        patterns:
+        - "*"
+      # No security-updates group: while a grouped security PR is open, Dependabot defers fixes for packages not already in it.
