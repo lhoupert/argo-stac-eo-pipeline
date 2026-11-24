@@ -16,8 +16,8 @@ updates:
         - "*"
 
   # Moves the digest-pinned FROM images in the two Dockerfiles (Python base, uv
-  # stage, dev container base). No cooldown: base image updates carry the OS
-  # security fixes. deploy/ is left out on purpose: kindest/node must match the
+  # stage, dev container base). No cooldown set: base image updates carry the
+  # OS security fixes. deploy/ is left out on purpose: kindest/node must match the
   # kind release in CI, install.yaml matches the argo CLI version, and the STAC
   # images are digests without a tag, which would follow "latest". The kind,
   # kubectl and argo CLIs in ci.yml and .devcontainer/ are bumped by hand.
@@ -31,6 +31,9 @@ updates:
       # CI tests on .python-version (3.12), so moving off it is a deliberate upgrade.
       - dependency-name: "python"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # A new Ubuntu release for the dev container is a deliberate upgrade too.
+      - dependency-name: "devcontainers/base"
+        update-types: ["version-update:semver-major"]
     groups:
       docker:
         patterns:

@@ -2,7 +2,8 @@
 # uv, kind, kubectl, argo (Docker-in-Docker comes from the devcontainer feature, see
 # devcontainer.json). Tool versions are pinned so a Codespace behaves like a maintainer's laptop
 # (the argo CLI v3.7.4 is a known-good pairing with the vendored v4.0.6 server). The shipped
-# *runtime* image (../Dockerfile) is digest-pinned; this dev image version-pins its CLIs.
+# *runtime* image (../Dockerfile) is digest-pinned; here the base and uv are digest-pinned and
+# the CLIs version-pinned.
 
 # uv — the very same pinned image the runtime Dockerfile uses, so dev and the built image resolve
 # dependencies with one identical uv. A named stage, because Dependabot only reads FROM lines.
