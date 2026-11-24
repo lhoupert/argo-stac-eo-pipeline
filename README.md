@@ -60,8 +60,10 @@ cluster runs, letting you skip everything below. See
 
 ```bash
 make check              # confirm Docker (running) + kind/kubectl/argo/uv are installed
-make up                 # cluster: MinIO + pgSTAC + STAC API + stac-browser + Argo (returns when ready)
+make up                 # cluster: RustFS + pgSTAC + STAC API + stac-browser + Argo (returns when ready)
 ```
+
+The object store is [RustFS](https://github.com/rustfs/rustfs), an Apache-2.0 S3-compatible server; MinIO's community images are no longer published on Docker Hub. Its in-cluster names (`minio`, `minio-credentials`) are unchanged. If you built `eo-ingest:dev` before this change, run `make rebuild` once.
 
 Then **open the Argo UI first**, so you watch the pipeline execute, and submit the rung from a
 second terminal. `make ui` and `make browse` each stay running (they hold a port-forward):
@@ -97,7 +99,7 @@ maintainer-equivalent environment.
 | Environment | What runs |
 |-------------|-----------|
 | Free Codespace / 2-core, 4 GB | **Rung 0 only** (`./stages/00-cron/run.sh`, plain `docker run`, no Kubernetes) |
-| 4-core, 8 GB+ | The **full ladder** (`make up` → rungs 1–4): kind + MinIO + pgSTAC + STAC API + Argo |
+| 4-core, 8 GB+ | The **full ladder** (`make up` → rungs 1–4): kind + RustFS + pgSTAC + STAC API + Argo |
 
 Rung 0 exists precisely so the entry point works on the smallest tier; the cluster appears at
 rung 1, where you need the bigger machine.
@@ -114,7 +116,7 @@ cluster).
 | 2026-06-10 | 113 s | 41 s | **153 s** |
 
 **Caveat, be honest about "cold":** this is a cold *cluster* (fresh `kind`) but a **warm image
-cache** (the MinIO / pgSTAC / stac-api / Argo images were already pulled). A truly pristine machine
+cache** (the RustFS / pgSTAC / stac-api / Argo images were already pulled). A truly pristine machine
 also pays the one-time image pulls. Specs: **Apple M5, 10-core (4P+6E), 32 GB**. These are laptop
 numbers, *not* a CI SLA; the CI-runner budget is measured separately in the kind-smoke job.
 

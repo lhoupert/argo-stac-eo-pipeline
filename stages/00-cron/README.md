@@ -4,18 +4,18 @@
 
 _Ladder: rung 0 of 5 — you are here._
 
-This rung runs the one image (the frozen unit of work) on a schedule against a local MinIO,
+This rung runs the one image (the frozen unit of work) on a schedule against a local RustFS,
 with no Kubernetes and no catalog. It is deliberately fragile — its job is to make the problems
 visible so the later rungs have something to fix.
 
 ## What it does
 
 ```
-cron ──▶ run.sh ──▶ docker run eo-ingest  ──▶  MinIO (object storage)
+cron ──▶ run.sh ──▶ docker run eo-ingest  ──▶  RustFS (object storage)
                     (STAC_URL unset)            └─ the asset, and nothing else
 ```
 
-- `run.sh` builds/uses `eo-ingest:dev`, starts a local MinIO, and runs
+- `run.sh` builds/uses `eo-ingest:dev`, starts a local RustFS, and runs
   `python -m eo_ingest.ingest` with `STAC_URL` unset — so the item's assets land in object
   storage and registration is skipped.
 - `crontab` is the one line that would schedule it at 03:00 daily.
@@ -27,7 +27,7 @@ cron ──▶ run.sh ──▶ docker run eo-ingest  ──▶  MinIO (object s
 ./stages/00-cron/run.sh 2026-03-15      # or a specific day
 ```
 
-You'll see the asset in MinIO (console at http://localhost:9001, user/pass `minioadmin`).
+You'll see the asset in RustFS (console at http://localhost:9001, user/pass `minioadmin`).
 
 ## Why this is fragile (the point of the rung)
 
