@@ -1,0 +1,56 @@
+# Set update schedule for GitHub Actions, the Dockerfile images and the Python
+# dependencies in uv.lock
+
+version: 2
+updates:
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    cooldown:
+      default-days: 7
+    schedule:
+      interval: "monthly"
+    groups:
+      all:
+        patterns:
+        - "*"
+
+  # Moves the digest-pinned FROM images in the two Dockerfiles (Python base, uv
+  # stage, dev container base). No cooldown set: base image updates carry the
+  # OS security fixes. deploy/ is left out on purpose: kindest/node must match the
+  # kind release in CI, install.yaml matches the argo CLI version, and the STAC
+  # images are digests without a tag, which would follow "latest". The kind,
+  # kubectl and argo CLIs in ci.yml and .devcontainer/ are bumped by hand.
+  - package-ecosystem: "docker"
+    directories:
+      - "/"
+      - "/.devcontainer"
+    schedule:
+      interval: "weekly"
+    ignore:
+      # CI tests on .python-version (3.12), so moving off it is a deliberate upgrade.
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # A new Ubuntu release for the dev container is a deliberate upgrade too.
+      - dependency-name: "devcontainers/base"
+        update-types: ["version-update:semver-major"]
+    groups:
+      docker:
+        patterns:
+        - "*"
+
+  - package-ecosystem: "uv"
+    directory: "/"
+    # Version updates only: security updates ignore the cooldown.
+    cooldown:
+      default-days: 7
+    schedule:
+      interval: "weekly"
+    allow:
+    # Include transitive dependencies (e.g. urllib3, certifi): the Docker image installs uv.lock as is.
+    - dependency-type: "all"
+    groups:
+      python:
+        patterns:
+        - "*"
+      # No security-updates group: while a grouped security PR is open, Dependabot defers fixes for packages not already in it.

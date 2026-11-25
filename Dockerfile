@@ -6,15 +6,18 @@
 # Base and tooling are pinned by multi-arch *index* digests so the same Dockerfile builds an
 # identical, reproducible image on linux/amd64 and linux/arm64.
 
-# python:3.12-alpine (2026-06-27) — smaller footprint, musl-based, far fewer OS-level CVEs.
+# uv: a named stage rather than COPY --from=<image>, because Dependabot only reads FROM lines.
+FROM ghcr.io/astral-sh/uv:0.5.18@sha256:e2101b9e627153b8fe4e8a1249cc4194f1b38ece7f28a5a9b8f958e3b560e69c AS uv
+
+# python:3.12-alpine — smaller footprint, musl-based, far fewer OS-level CVEs.
 # All runtime deps (boto3, pystac, pillow, httpx …) ship musllinux wheels on PyPI so no build
 # toolchain is needed inside the image.
 FROM python:3.12-alpine@sha256:6d43704baacd1bfbe7c295d7f13079d5d8104ed33568873133f8fc69980419df
 
 RUN apk upgrade --no-cache
 
-# uv 0.5.18 — copied in (not used as the base) so we install against the frozen lock.
-COPY --from=ghcr.io/astral-sh/uv:0.5.18@sha256:e2101b9e627153b8fe4e8a1249cc4194f1b38ece7f28a5a9b8f958e3b560e69c /uv /uvx /bin/
+# uv — copied in (not used as the base) so we install against the frozen lock.
+COPY --from=uv /uv /uvx /bin/
 
 WORKDIR /app
 

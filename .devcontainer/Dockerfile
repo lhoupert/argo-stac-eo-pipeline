@@ -2,12 +2,16 @@
 # uv, kind, kubectl, argo (Docker-in-Docker comes from the devcontainer feature, see
 # devcontainer.json). Tool versions are pinned so a Codespace behaves like a maintainer's laptop
 # (the argo CLI v3.7.4 is a known-good pairing with the vendored v4.0.6 server). The shipped
-# *runtime* image (../Dockerfile) is digest-pinned; this dev image version-pins its CLIs.
-FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
+# *runtime* image (../Dockerfile) is digest-pinned; here the base and uv are digest-pinned and
+# the CLIs version-pinned.
 
-# uv — copied from the very same pinned image the runtime Dockerfile uses, so dev and the built
-# image resolve dependencies with one identical uv.
-COPY --from=ghcr.io/astral-sh/uv:0.5.18@sha256:e2101b9e627153b8fe4e8a1249cc4194f1b38ece7f28a5a9b8f958e3b560e69c /uv /uvx /usr/local/bin/
+# uv — the very same pinned image the runtime Dockerfile uses, so dev and the built image resolve
+# dependencies with one identical uv. A named stage, because Dependabot only reads FROM lines.
+FROM ghcr.io/astral-sh/uv:0.5.18@sha256:e2101b9e627153b8fe4e8a1249cc4194f1b38ece7f28a5a9b8f958e3b560e69c AS uv
+
+FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04@sha256:d94c97dd9cacf183d0a6fd12a8e87b526e9e928307674ae9c94139139c0c6eae
+
+COPY --from=uv /uv /uvx /usr/local/bin/
 
 ARG KUBECTL_VERSION=v1.34.1
 ARG KIND_VERSION=v0.32.0
