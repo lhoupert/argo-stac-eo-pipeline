@@ -7,12 +7,12 @@
 # identical, reproducible image on linux/amd64 and linux/arm64.
 
 # uv: a named stage rather than COPY --from=<image>, because Dependabot only reads FROM lines.
-FROM ghcr.io/astral-sh/uv:0.5.18@sha256:e2101b9e627153b8fe4e8a1249cc4194f1b38ece7f28a5a9b8f958e3b560e69c AS uv
+FROM ghcr.io/astral-sh/uv:0.13.10@sha256:a3ea1357342c1a4bf9a0c53a3deb1b55379aefa037338d8113d5771efa01774f AS uv
 
 # python:3.12-alpine — smaller footprint, musl-based, far fewer OS-level CVEs.
 # All runtime deps (boto3, pystac, pillow, httpx …) ship musllinux wheels on PyPI so no build
 # toolchain is needed inside the image.
-FROM python:3.12-alpine@sha256:6d43704baacd1bfbe7c295d7f13079d5d8104ed33568873133f8fc69980419df
+FROM python:3.12-alpine@sha256:c5ba3deef00c7758561a0f03c26f44f10589263d40e732b8748e0d1f38f6dd89
 
 RUN apk upgrade --no-cache
 
